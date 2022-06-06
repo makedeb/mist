@@ -1,7 +1,8 @@
 mod message;
-mod search;
 mod mpr_cache;
+mod search;
 mod util;
+mod whoami;
 
 use clap::{self, Arg, Command};
 
@@ -15,7 +16,10 @@ fn main() {
             Arg::new("token")
                 .help("The API token to authenticate to the MPR with")
                 .long("token")
+                .env("MPR_TOKEN")
+                .hide_env_values(true)
                 .global(true)
+                .takes_value(true)
         )
         .subcommand(
             Command::new("search")
@@ -27,10 +31,15 @@ fn main() {
                         .multiple_values(true)
                 ),
         )
+        .subcommand(
+            Command::new("whoami")
+                .about("Show the currently authenticated user")
+        )
         .get_matches();
 
     match cmd.subcommand() {
         Some(("search", args)) => search::search(args),
+        Some(("whoami", args)) => whoami::whoami(args),
         _                      => {},
     };
 }
