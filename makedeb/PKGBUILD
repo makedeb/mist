@@ -1,7 +1,7 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
 pkgname=mpr-cli
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')
 makedepends=('cargo' 'libssl-dev' 'pkg-config')
@@ -18,7 +18,7 @@ build() {
 
 package() {
     cd "${pkgname}-${pkgver}/"
-    install -Dm 755 "target/release/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+    install -Dm 755 "target/release/mpr" "${pkgdir}/usr/bin/mpr"
 }
 
 # vim: set sw=4 expandtab:
