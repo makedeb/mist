@@ -7,6 +7,7 @@ mod whoami;
 use clap::{self, Arg, Command};
 
 #[quit::main]
+#[rustfmt::skip]
 fn main() {
     let cmd = Command::new(clap::crate_name!())
         .version(clap::crate_version!())

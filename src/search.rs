@@ -1,30 +1,30 @@
+use crate::{message, mpr_cache};
 use ansi_term::{Colour, Style};
 use chrono::{TimeZone, Utc};
 use clap;
-use crate::{message, mpr_cache};
 
 pub fn search(args: &clap::ArgMatches) -> () {
     let pkglist: Vec<&str> = args.values_of("pkg").unwrap().collect();
     let cache = mpr_cache::new();
     let mut matches: Vec<&mpr_cache::MprCache> = Vec::new();
-    
+
     // Get matches.
     for pkg in &cache {
         for arg in &pkglist {
-            if pkg.pkgname.contains(arg) && ! matches.contains(&pkg) {
+            if pkg.pkgname.contains(arg) && !matches.contains(&pkg) {
                 matches.push(pkg);
             }
 
             match &pkg.pkgdesc {
                 Some(pkgdesc) => {
-                    if pkgdesc.to_lowercase().contains(arg) && ! matches.contains(&pkg) {
+                    if pkgdesc.to_lowercase().contains(arg) && !matches.contains(&pkg) {
                         matches.push(pkg);
                     }
-                },
-                None => ()
+                }
+                None => (),
             }
         }
-    };
+    }
 
     // Print matches.
     //
@@ -35,7 +35,7 @@ pub fn search(args: &clap::ArgMatches) -> () {
 
     if matches_length == 0 {
         message::info("No results.");
-        return
+        return;
     }
 
     matches.sort_by(|a, b| a.pkgname.to_lowercase().cmp(&b.pkgname.to_lowercase()));
@@ -50,12 +50,8 @@ pub fn search(args: &clap::ArgMatches) -> () {
         );
 
         match &pkg.pkgdesc {
-            Some(pkgdesc) => println!(
-                "{} {}",
-                Style::new().bold().paint("Description:"),
-                pkgdesc
-            ),
-            None => ()
+            Some(pkgdesc) => println!("{} {}", Style::new().bold().paint("Description:"), pkgdesc),
+            None => (),
         }
 
         match &pkg.maintainer {
@@ -64,14 +60,10 @@ pub fn search(args: &clap::ArgMatches) -> () {
                 Style::new().bold().paint("Maintainer:"),
                 maintainer
             ),
-            None => ()
+            None => (),
         }
 
-        println!(
-            "{} {}",
-            Style::new().bold().paint("Votes:"),
-            &pkg.num_votes
-        );
+        println!("{} {}", Style::new().bold().paint("Votes:"), &pkg.num_votes);
         println!(
             "{} {}",
             Style::new().bold().paint("Popularity:"),
@@ -81,16 +73,9 @@ pub fn search(args: &clap::ArgMatches) -> () {
         match &pkg.ood {
             Some(ood) => {
                 let dt = Utc.timestamp(*ood as i64, 0);
-                println!(
-                    "{} {}",
-                    Style::new().bold().paint("Out of Date:"),
-                    dt
-                );
-            },
-            None => println!(
-                "{} N/A",
-                Style::new().bold().paint("Out of Date:")
-            )
+                println!("{} {}", Style::new().bold().paint("Out of Date:"), dt);
+            }
+            None => println!("{} N/A", Style::new().bold().paint("Out of Date:")),
         }
 
         if index < matches_length {

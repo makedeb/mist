@@ -1,5 +1,5 @@
-use clap;
 use crate::{message, util};
+use clap;
 use exitcode;
 use quit;
 use serde::{Deserialize, Serialize};

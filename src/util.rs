@@ -8,7 +8,7 @@ use std::str;
 
 #[derive(Deserialize, Serialize)]
 pub struct Authenticated {
-    #[serde(rename="type")]
+    #[serde(rename = "type")]
     pub resp_type: String,
     pub msg: String,
 }
@@ -28,20 +28,18 @@ impl<'a> AuthenticatedRequest<'a> {
     pub fn get(&self, path: &str) -> String {
         // Make the request.
         let client = reqwest::blocking::Client::new();
-        let mut resp = match client.get(
-                format!("https://{}/api/{}", self::MPR_URL, path)
-            )
+        let mut resp = match client
+            .get(format!("https://{}/api/{}", self::MPR_URL, path))
             .header("Authorization", self.api_token)
-            .send() {
-                Ok(resp) => resp,
-                Err(err) => {
-                    message::error(
-                        &format!("Failed to make request [{}]", err)
-                    );
-                    quit::with_code(exitcode::UNAVAILABLE);
-                }
-            };
-        
+            .send()
+        {
+            Ok(resp) => resp,
+            Err(err) => {
+                message::error(&format!("Failed to make request [{}]", err));
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        };
+
         // Check the response and see if we got a bad API token error. If we did, go ahead and
         // abort the program.
         let resp_text = resp.text().unwrap();
@@ -54,8 +52,8 @@ impl<'a> AuthenticatedRequest<'a> {
                     message::error("Invalid API key was passed in.");
                     quit::with_code(exitcode::USAGE);
                 };
-            },
-            Err(_) => ()
+            }
+            Err(_) => (),
         }
 
         resp_text

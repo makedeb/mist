@@ -5,9 +5,5 @@ pub fn info(str: &str) -> () {
 }
 
 pub fn error(str: &str) -> () {
-    println!(
-        "{} {}",
-        Colour::Red.paint("Err:"),
-        str
-    );
+    println!("{} {}", Colour::Red.paint("Err:"), str);
 }
