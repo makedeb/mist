@@ -18,7 +18,7 @@ SSH_HOST="${mpr_url}" \
 cd makedeb/
 source PKGBUILD
 
-git clone "ssh://${mpr_url}/${pkgname}"
+git clone "ssh://mpr@${mpr_url}/${pkgname}"
 cp PKGBUILD "${pkgname}/"
 cd "${pkgname}/"
 
