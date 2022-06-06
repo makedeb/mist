@@ -41,7 +41,7 @@ pub fn new() -> Vec<MprCache> {
     mpr_cache_dir.push("mpr-cli");
 
     if !mpr_cache_dir.exists() {
-        match fs::create_dir(mpr_cache_dir.clone()) {
+        match fs::create_dir_all(mpr_cache_dir.clone()) {
             Ok(()) => (),
             Err(err) => {
                 message::error(&format!(
