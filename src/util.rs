@@ -39,14 +39,14 @@ impl<'a> AuthenticatedRequest<'a> {
         // Check the response and see if we got a bad API token error. If we did, go ahead and
         // abort the program.
         let resp_text = resp.text().unwrap();
-        
+
         if let Ok(json) = serde_json::from_str::<Authenticated>(&resp_text) {
-                // TODO: We need to define a more suitable way for machine parsing of errors in the
-                // MPR. Maybe something like '{"err_type": "invalid_api_key"}'.
-                if json.resp_type == "error" && json.msg == "Invalid API key." {
-                    message::error("Invalid API key was passed in.");
-                    quit::with_code(exitcode::USAGE);
-                }
+            // TODO: We need to define a more suitable way for machine parsing of errors in the
+            // MPR. Maybe something like '{"err_type": "invalid_api_key"}'.
+            if json.resp_type == "error" && json.msg == "Invalid API key." {
+                message::error("Invalid API key was passed in.");
+                quit::with_code(exitcode::USAGE);
+            }
         }
 
         resp_text
