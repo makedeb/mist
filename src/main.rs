@@ -1,6 +1,5 @@
 mod message;
 mod search;
-mod request;
 mod mpr_cache;
 mod util;
 

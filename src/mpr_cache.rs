@@ -1,8 +1,9 @@
-use crate::{message, request, util};
+use crate::{message, util};
 use dirs;
 use exitcode;
 use flate2::{Compression, read::GzDecoder, write::GzEncoder};
 use quit;
+use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::{fs, time::SystemTime};
@@ -107,9 +108,17 @@ pub fn new() -> Vec<MprCache> {
     // If we need to, update the cache file.
     if update_cache {
         // Download the archive.
-        let resp = request::get(
-            format!("https://{}/packages-meta-ext-v2.json.gz", util::MPR_URL).as_str()
-        );
+        let resp = match reqwest::blocking::get(
+            format!("https://{}/packages-meta-ext-v2.json.gz", util::MPR_URL)
+        ) {
+            Ok(resp) => resp,
+            Err(err) => {
+                message::error(
+                    &format!("Unable to make request. [{}]", err)
+                );
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        };
 
         if ! resp.status().is_success() {
             message::error(
