@@ -106,10 +106,8 @@ pub fn new() -> Vec<MprCache> {
     
     // If we need to, update the cache file.
     if update_cache {
-        message::info("Updating package cache...");
-
         // Download the archive.
-        let mut resp = request::get(
+        let resp = request::get(
             format!("https://{}/packages-meta-ext-v2.json.gz", util::MPR_URL).as_str()
         );
 
@@ -138,7 +136,7 @@ pub fn new() -> Vec<MprCache> {
         let mut config_compressor = GzEncoder::new(Vec::new(), Compression::default());
         config_compressor.write_all(
             serde_json::to_string(&cache).unwrap().as_bytes()
-        );
+        ).unwrap();
         let config_gz = config_compressor.finish().unwrap();
 
         match fs::write(mpr_cache_file, config_gz) {

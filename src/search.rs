@@ -1,5 +1,5 @@
-use ansi_term::Colour;
-use chrono::{DateTime, TimeZone, Utc};
+use ansi_term::{Colour, Style};
+use chrono::{TimeZone, Utc};
 use clap;
 use crate::{message, mpr_cache};
 
@@ -12,13 +12,13 @@ pub fn search(args: &clap::ArgMatches) -> () {
     for pkg in &cache {
         for arg in &pkglist {
             if pkg.pkgname.contains(arg) && ! matches.contains(&pkg) {
-                matches.push(&pkg);
+                matches.push(pkg);
             }
 
             match &pkg.pkgdesc {
                 Some(pkgdesc) => {
                     if pkgdesc.to_lowercase().contains(arg) && ! matches.contains(&pkg) {
-                        matches.push(&pkg);
+                        matches.push(pkg);
                     }
                 },
                 None => ()
@@ -38,6 +38,8 @@ pub fn search(args: &clap::ArgMatches) -> () {
         return
     }
 
+    matches.sort_by(|a, b| a.pkgname.to_lowercase().cmp(&b.pkgname.to_lowercase()));
+
     let matches_length = matches_length - 1;
 
     for (index, pkg) in matches.iter().enumerate() {
@@ -48,24 +50,47 @@ pub fn search(args: &clap::ArgMatches) -> () {
         );
 
         match &pkg.pkgdesc {
-            Some(pkgdesc) => println!("Description: {}", pkgdesc),
+            Some(pkgdesc) => println!(
+                "{} {}",
+                Style::new().bold().paint("Description:"),
+                pkgdesc
+            ),
             None => ()
         }
 
         match &pkg.maintainer {
-            Some(maintainer) => println!("Maintainer: {}", maintainer),
+            Some(maintainer) => println!(
+                "{} {}",
+                Style::new().bold().paint("Maintainer:"),
+                maintainer
+            ),
             None => ()
         }
 
-        println!("Votes: {}", &pkg.num_votes);
-        println!("Popularity: {}", &pkg.popularity);
+        println!(
+            "{} {}",
+            Style::new().bold().paint("Votes:"),
+            &pkg.num_votes
+        );
+        println!(
+            "{} {}",
+            Style::new().bold().paint("Popularity:"),
+            &pkg.popularity
+        );
 
         match &pkg.ood {
             Some(ood) => {
                 let dt = Utc.timestamp(*ood as i64, 0);
-                println!("Out of Date: {}", dt);
+                println!(
+                    "{} {}",
+                    Style::new().bold().paint("Out of Date:"),
+                    dt
+                );
             },
-            None => println!("Out of Date: N/A")
+            None => println!(
+                "{} N/A",
+                Style::new().bold().paint("Out of Date:")
+            )
         }
 
         if index < matches_length {

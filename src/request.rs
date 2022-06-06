@@ -15,7 +15,7 @@ pub fn get(url: &str) -> reqwest::blocking::Response {
             Err(err) => {
                 if resp_count > 2 {
                     message::error(
-                        &format!("Unable to make request to '{}'.", url)
+                        &format!("Unable to make request to '{}'. [{}]", url, err)
                     );
                     quit::with_code(exitcode::UNAVAILABLE);
                 } else {
