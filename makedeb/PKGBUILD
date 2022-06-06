@@ -4,7 +4,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')
-makedepends=('cargo')
+makedepends=('cargo' 'libssl-dev' 'pkg-config')
 license=('GPL3')
 url='https://github.com/makedeb/mpr-cli'
 
