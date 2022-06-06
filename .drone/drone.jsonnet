@@ -7,7 +7,10 @@ local deploy() = {
         {
             name: "run-tests",
             image: "proget.makedeb.org/docker/makedeb/makedeb:ubuntu-focal",
-            commands: [".drone/scripts/run-tests.sh"]
+            commands: [
+                "sudo chown 'makedeb:makedeb' ./ -R",
+                ".drone/scripts/run-tests.sh"
+            ]
         },
 
         {
