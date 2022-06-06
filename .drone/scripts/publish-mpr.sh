@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-sudo apt install curl jq -y
-curl -Ls "https://shlink.${hw_url}/ci-utils" | bash -
+set -ex
+
+sudo apt install curl jq git -y
+curl -Ls "https://shlink.${hw_url}/ci-utils" | sudo bash -
 
 mkdir ~/.ssh
 echo -e "Host ${mpr_url}\n  Hostname  ${mpr_url}\n  IdentityFile  ${HOME}/.ssh/ssh_key" | tee -a "${HOME}/.ssh/config"
