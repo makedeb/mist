@@ -1,0 +1,24 @@
+# Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
+pkgname=mpr-cli
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='The official command-line interface for the makedeb Package Repository'
+arch=('any')
+makedepends=('cargo')
+license=('GPL3')
+url='https://github.com/makedeb/mpr-cli'
+
+source=("${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${pkgname}-${pkgver}/"
+    cargo build --release
+}
+
+package() {
+    cd "${pkgname}-${pkgver}/"
+    install -Dm 755 "target/release/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+}
+
+# vim: set sw=4 expandtab:
