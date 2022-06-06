@@ -1,11 +1,6 @@
 use crate::{message, util};
-use clap;
-use exitcode;
-use quit;
-use serde::{Deserialize, Serialize};
-use serde_json;
 
-pub fn whoami(args: &clap::ArgMatches) -> () {
+pub fn whoami(args: &clap::ArgMatches) {
     let api_token = match args.value_of("token") {
         Some(token) => token,
         None => {

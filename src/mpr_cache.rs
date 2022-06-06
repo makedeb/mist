@@ -1,11 +1,6 @@
 use crate::{message, util};
-use dirs;
-use exitcode;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use quit;
-use reqwest;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::{fs, time::SystemTime};
 
 // REMOVE LATER!
@@ -185,7 +180,7 @@ pub fn new() -> Vec<MprCache> {
             }
         };
 
-        let cache = match valid_archive(cache_file) {
+        match valid_archive(cache_file) {
             Ok(file) => file,
             Err(_) => {
                 // On an error, let's just remove the cache file and regenerate it by recalling
@@ -193,9 +188,7 @@ pub fn new() -> Vec<MprCache> {
                 fs::remove_file(mpr_cache_file).unwrap();
                 self::new()
             }
-        };
-
-        cache
+        }
     }
 }
 

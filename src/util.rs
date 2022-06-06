@@ -1,9 +1,5 @@
 use crate::message;
-use exitcode;
-use quit;
-use reqwest;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::str;
 
 #[derive(Deserialize, Serialize)]
@@ -28,7 +24,7 @@ impl<'a> AuthenticatedRequest<'a> {
     pub fn get(&self, path: &str) -> String {
         // Make the request.
         let client = reqwest::blocking::Client::new();
-        let mut resp = match client
+        let resp = match client
             .get(format!("https://{}/api/{}", self::MPR_URL, path))
             .header("Authorization", self.api_token)
             .send()
@@ -43,17 +39,14 @@ impl<'a> AuthenticatedRequest<'a> {
         // Check the response and see if we got a bad API token error. If we did, go ahead and
         // abort the program.
         let resp_text = resp.text().unwrap();
-
-        match serde_json::from_str::<Authenticated>(&resp_text) {
-            Ok(json) => {
+        
+        if let Ok(json) = serde_json::from_str::<Authenticated>(&resp_text) {
                 // TODO: We need to define a more suitable way for machine parsing of errors in the
                 // MPR. Maybe something like '{"err_type": "invalid_api_key"}'.
                 if json.resp_type == "error" && json.msg == "Invalid API key." {
                     message::error("Invalid API key was passed in.");
                     quit::with_code(exitcode::USAGE);
-                };
-            }
-            Err(_) => (),
+                }
         }
 
         resp_text

@@ -1,9 +1,8 @@
 use crate::{message, mpr_cache};
 use ansi_term::{Colour, Style};
 use chrono::{TimeZone, Utc};
-use clap;
 
-pub fn search(args: &clap::ArgMatches) -> () {
+pub fn search(args: &clap::ArgMatches) {
     let pkglist: Vec<&str> = args.values_of("pkg").unwrap().collect();
     let cache = mpr_cache::new();
     let mut matches: Vec<&mpr_cache::MprCache> = Vec::new();
