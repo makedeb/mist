@@ -4,7 +4,8 @@ use chrono::{TimeZone, Utc};
 
 pub fn search(args: &clap::ArgMatches) {
     let pkglist: Vec<&str> = args.values_of("pkg").unwrap().collect();
-    let cache = mpr_cache::new();
+    let mpr_url = args.value_of("mpr-url").unwrap();
+    let cache = mpr_cache::new(mpr_url);
     let mut matches: Vec<&mpr_cache::MprCache> = Vec::new();
 
     // Get matches.

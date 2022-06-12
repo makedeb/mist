@@ -1,4 +1,10 @@
 use crate::{message, util};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct Authenticated {
+    user: String,
+}
 
 pub fn whoami(args: &clap::ArgMatches) {
     let api_token = match args.value_of("token") {
@@ -8,10 +14,11 @@ pub fn whoami(args: &clap::ArgMatches) {
             quit::with_code(exitcode::USAGE);
         }
     };
+    let mpr_url = args.value_of("mpr-url").unwrap();
 
-    let request = util::AuthenticatedRequest::new(api_token);
+    let request = util::AuthenticatedRequest::new(api_token, mpr_url);
     let resp_text = request.get("test");
-    let json = serde_json::from_str::<util::Authenticated>(&resp_text).unwrap();
+    let json = serde_json::from_str::<Authenticated>(&resp_text).unwrap();
 
-    println!("{}", json.msg);
+    println!("Authenticated to the MPR as {}.", json.user);
 }

@@ -1,3 +1,4 @@
+mod clone;
 mod message;
 mod mpr_cache;
 mod search;
@@ -22,12 +23,32 @@ fn main() {
                 .global(true)
                 .takes_value(true)
         )
+        .arg(
+            Arg::new("mpr-url")
+            .help("URL to access the MPR from")
+            .long("mpr-url")
+            .env("MPR_URL")
+            .hide_env_values(true)
+            .global(true)
+            .takes_value(true)
+            .default_value("https://mpr.makedeb.org")
+            )
+        .subcommand(
+            Command::new("clone")
+                .about("Clone a package base from the MPR")
+                .arg(
+                    Arg::new("pkg")
+                        .help("The package to clone")
+                        .required(true)
+                )
+        )
         .subcommand(
             Command::new("search")
                 .about("Search the MPR for a package")
                 .arg_required_else_help(true)
                 .arg(
                     Arg::new("pkg")
+                        .required(true)
                         .help("The query to search for")
                         .multiple_values(true)
                 ),
@@ -39,6 +60,7 @@ fn main() {
         .get_matches();
 
     match cmd.subcommand() {
+        Some(("clone", args)) => clone::clone(args),
         Some(("search", args)) => search::search(args),
         Some(("whoami", args)) => whoami::whoami(args),
         _                      => {},

@@ -1,10 +1,8 @@
-use crate::{message, util};
+use crate::message;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use serde::{Deserialize, Serialize};
-use std::{fs, time::SystemTime};
-
-// REMOVE LATER!
 use std::io::prelude::*;
+use std::{fs, time::SystemTime};
 
 #[derive(Deserialize, Serialize, PartialEq)]
 pub struct MprCache {
@@ -26,7 +24,7 @@ pub struct MprCache {
     pub ood: Option<u32>,
 }
 
-pub fn new() -> Vec<MprCache> {
+pub fn new(mpr_url: &str) -> Vec<MprCache> {
     // Get the XDG cache directory.
     let cache_dir = match dirs::cache_dir() {
         Some(dir) => dir,
@@ -113,10 +111,8 @@ pub fn new() -> Vec<MprCache> {
     // If we need to, update the cache file.
     if update_cache {
         // Download the archive.
-        let resp = match reqwest::blocking::get(format!(
-            "https://{}/packages-meta-ext-v2.json.gz",
-            util::MPR_URL
-        )) {
+        let resp = match reqwest::blocking::get(format!("{}/packages-meta-ext-v2.json.gz", mpr_url))
+        {
             Ok(resp) => resp,
             Err(err) => {
                 message::error(&format!("Unable to make request. [{}]", err));
@@ -186,7 +182,7 @@ pub fn new() -> Vec<MprCache> {
                 // On an error, let's just remove the cache file and regenerate it by recalling
                 // this function.
                 fs::remove_file(mpr_cache_file).unwrap();
-                self::new()
+                self::new(mpr_url)
             }
         }
     }
