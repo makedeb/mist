@@ -1,5 +1,4 @@
 use crate::{message, mpr_cache, util};
-use std::collections::HashMap;
 
 pub fn clone(args: &clap::ArgMatches) {
     let pkg = args.value_of("pkg").unwrap();
@@ -7,34 +6,34 @@ pub fn clone(args: &clap::ArgMatches) {
     let cache = mpr_cache::new(mpr_url);
 
     let mut pkgbases: Vec<&str> = Vec::new();
-    let mut pkgbase_mappings: HashMap<&str, &str> = HashMap::new();
 
     // Get a list of package bases.
     for pkg in &cache {
         pkgbases.push(&pkg.pkgbase);
-        pkgbase_mappings.insert(&pkg.pkgname, &pkg.pkgbase);
     }
 
     // Abort if the package base doesn't exist.
     if !pkgbases.contains(&pkg) {
         message::error(&format!("Package base '{}' doesn't exist on the MPR.", pkg));
 
-        // If the specified package doesn't exist, but another package base builds the requested
-        // package, the user probably wants to clone that instead (i.e. 'rustc' for `cargo` on the MPR).
-        if pkgbase_mappings.contains_key(&pkg) {
-            message::error(
-                &format!(
-                    "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:",
-                    pkgbase_mappings[&pkg],
-                    &pkg
-                )
-            );
+        // If there's a pkgbase that builds this package, guide the user to clone that package
+        // instead.
+        let pkgbase = util::find_pkgbase(pkg, &cache);
 
-            message::error_bold(&format!(
-                "    {} clone '{}'",
-                clap::crate_name!(),
-                pkgbase_mappings[&pkg]
-            ));
+        match pkgbase {
+            Some(pkgbase) => {
+                message::error(
+                    &format!(
+                        "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:",
+                        pkgbase,
+                        &pkg
+                    )
+                );
+
+                message::error_bold(&format!("    {} clone '{}'", clap::crate_name!(), pkgbase));
+            }
+
+            None => (),
         }
 
         quit::with_code(exitcode::USAGE);

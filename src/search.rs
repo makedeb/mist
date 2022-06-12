@@ -41,45 +41,79 @@ pub fn search(args: &clap::ArgMatches) {
     matches.sort_by(|a, b| a.pkgname.to_lowercase().cmp(&b.pkgname.to_lowercase()));
 
     let matches_length = matches_length - 1;
+    let mut result = String::new();
 
     for (index, pkg) in matches.iter().enumerate() {
-        println!(
-            "{}/{}",
-            Colour::Fixed(214).paint(pkg.pkgname.as_str()),
-            pkg.version
-        );
-
-        match &pkg.pkgdesc {
-            Some(pkgdesc) => println!("{} {}", Style::new().bold().paint("Description:"), pkgdesc),
-            None => (),
-        }
-
-        match &pkg.maintainer {
-            Some(maintainer) => println!(
-                "{} {}",
-                Style::new().bold().paint("Maintainer:"),
-                maintainer
-            ),
-            None => (),
-        }
-
-        println!("{} {}", Style::new().bold().paint("Votes:"), &pkg.num_votes);
-        println!(
-            "{} {}",
-            Style::new().bold().paint("Popularity:"),
-            &pkg.popularity
-        );
-
-        match &pkg.ood {
-            Some(ood) => {
-                let dt = Utc.timestamp(*ood as i64, 0);
-                println!("{} {}", Style::new().bold().paint("Out of Date:"), dt);
-            }
-            None => println!("{} N/A", Style::new().bold().paint("Out of Date:")),
-        }
+        result.push_str(&pkg_info(pkg));
 
         if index < matches_length {
-            println!();
+            result.push_str("\n\n");
         }
     }
+
+    println!("{}", result);
+}
+
+pub fn pkg_info(pkg: &mpr_cache::MprCache) -> String {
+    let mut result = String::new();
+    result.push_str(&format!(
+        "{}/{}\n",
+        Colour::Fixed(214).paint(pkg.pkgname.as_str()),
+        pkg.version
+    ));
+    match &pkg.pkgdesc {
+        Some(pkgdesc) => {
+            result.push_str(&format!(
+                "{} {}\n",
+                Style::new().bold().paint("Description:"),
+                pkgdesc
+            ));
+        }
+
+        None => (),
+    }
+
+    match &pkg.maintainer {
+        Some(maintainer) => {
+            result.push_str(&format!(
+                "{} {}\n",
+                Style::new().bold().paint("Maintainer:"),
+                maintainer
+            ));
+        }
+
+        None => (),
+    }
+
+    result.push_str(&format!(
+        "{} {}\n",
+        Style::new().bold().paint("Votes:"),
+        &pkg.num_votes
+    ));
+
+    result.push_str(&format!(
+        "{} {}\n",
+        Style::new().bold().paint("Popularity:"),
+        &pkg.popularity
+    ));
+
+    match &pkg.ood {
+        Some(ood) => {
+            let dt = Utc.timestamp(*ood as i64, 0);
+            result.push_str(&format!(
+                "{} {}",
+                Style::new().bold().paint("Out of Date:"),
+                dt
+            ));
+        }
+
+        None => {
+            result.push_str(&format!(
+                "{} N/A",
+                Style::new().bold().paint("Out of Date:")
+            ));
+        }
+    }
+
+    result
 }

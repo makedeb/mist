@@ -1,4 +1,5 @@
 mod clone;
+mod info;
 mod message;
 mod mpr_cache;
 mod search;
@@ -43,6 +44,22 @@ fn main() {
                 )
         )
         .subcommand(
+            Command::new("info")
+                .arg_required_else_help(true)
+                .about("View information about a package")
+                .arg(
+                    Arg::new("pkg")
+                    .help("The package to view")
+                    .required(true)
+                )
+                .arg(
+                    Arg::new("web")
+                    .help("Open the page for the package in a web browser")
+                    .short('w')
+                    .long("web")
+                )
+        )
+        .subcommand(
             Command::new("search")
                 .about("Search the MPR for a package")
                 .arg_required_else_help(true)
@@ -61,6 +78,7 @@ fn main() {
 
     match cmd.subcommand() {
         Some(("clone", args)) => clone::clone(args),
+        Some(("info", args)) => info::info(args),
         Some(("search", args)) => search::search(args),
         Some(("whoami", args)) => whoami::whoami(args),
         _                      => {},
