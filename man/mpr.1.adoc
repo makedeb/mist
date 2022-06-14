@@ -2,7 +2,7 @@
 :doctype: manpage
 :hardbreaks:
 :manmanual: MPR CLI
-:mansource: MAKEDEB $${MPR_VERSION}
+:mansource: Git
 
 == NAME
 mpr - The official command-line interface for the makedeb Package Repository

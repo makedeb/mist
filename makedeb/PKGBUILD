@@ -1,6 +1,6 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
 pkgname=mpr-cli
-pkgver=0.3.0
+pkgver=0.3.1
 pkgrel=1
 pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')
@@ -23,7 +23,7 @@ build() {
     cd "${pkgname}-${pkgver}/"
     cargo build --release
 
-    sed "s|\$\${MPR_VERSION}|${pkgver}|" man/mpr.8.adoc
+    sed -i "s|:mansource: Git|:mansource: ${pkgver}|" man/mpr.1.adoc
 }
 
 package() {

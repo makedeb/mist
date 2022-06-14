@@ -13,6 +13,6 @@ source makedeb/PKGBUILD
 
 release_notes="$(parse-changelog CHANGELOG.md "${pkgver}")"
 echo "${github_api_key}" | gh auth login --with-token
-gh release create --target "${DRONE_COMMIT_SHA}" -n "${release_notes}" "v${pkgver}"
+gh release create "v${pkgver}" --title "v${pkgver}" --target "${DRONE_COMMIT_SHA}" -n "${release_notes}"
 
 # vim: set sw=4 expandtab:
