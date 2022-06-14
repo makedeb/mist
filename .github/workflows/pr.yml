@@ -1,0 +1,20 @@
+name: Run unit tests
+on: {"pull_request"}
+env: {"DEBIAN_FRONTEND": "noninteractive"}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: proget.hunterwittenborn.com/docker/makedeb/makedeb-alpha:ubuntu-focal
+      options: --user makedeb
+    steps:
+      - name: Install CI prerequisites
+        run: sudo -E apt-get install git -y
+
+      - name: Checkout Git repository
+        uses: actions/checkout@v3
+
+      - name: Run unit tests
+        run: .drone/scripts/run-tests.sh
+
+# vim: expandtab ts=2 sw=2
