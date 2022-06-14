@@ -3,21 +3,21 @@ use ansi_term::{Colour, Style};
 use chrono::{TimeZone, Utc};
 
 pub fn search(args: &clap::ArgMatches) {
-    let pkglist: Vec<&str> = args.values_of("pkg").unwrap().collect();
-    let mpr_url = args.value_of("mpr-url").unwrap();
+    let pkglist: Vec<&String> = args.get_many("pkg").unwrap().collect();
+    let mpr_url: &String = args.get_one("mpr-url").unwrap();
     let cache = mpr_cache::new(mpr_url);
     let mut matches: Vec<&mpr_cache::MprCache> = Vec::new();
 
     // Get matches.
     for pkg in &cache {
         for arg in &pkglist {
-            if pkg.pkgname.contains(arg) && !matches.contains(&pkg) {
+            if pkg.pkgname.contains(arg.as_str()) && !matches.contains(&pkg) {
                 matches.push(pkg);
             }
 
             match &pkg.pkgdesc {
                 Some(pkgdesc) => {
-                    if pkgdesc.to_lowercase().contains(arg) && !matches.contains(&pkg) {
+                    if pkgdesc.to_lowercase().contains(arg.as_str()) && !matches.contains(&pkg) {
                         matches.push(pkg);
                     }
                 }
@@ -99,7 +99,7 @@ pub fn pkg_info(pkg: &mpr_cache::MprCache) -> String {
 
     match &pkg.ood {
         Some(ood) => {
-            let dt = Utc.timestamp(*ood as i64, 0);
+            let dt = Utc.timestamp(*ood as i64, 0).format("%Y-%m-%d").to_string();
             result.push_str(&format!(
                 "{} {}",
                 Style::new().bold().paint("Out of Date:"),

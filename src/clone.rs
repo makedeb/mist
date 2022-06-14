@@ -1,11 +1,11 @@
 use crate::{message, mpr_cache, util};
 
 pub fn clone(args: &clap::ArgMatches) {
-    let pkg = args.value_of("pkg").unwrap();
-    let mpr_url = args.value_of("mpr-url").unwrap();
+    let pkg: &String = args.get_one("pkg").unwrap();
+    let mpr_url: &String = args.get_one("mpr-url").unwrap();
     let cache = mpr_cache::new(mpr_url);
 
-    let mut pkgbases: Vec<&str> = Vec::new();
+    let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of package bases.
     for pkg in &cache {
@@ -41,8 +41,12 @@ pub fn clone(args: &clap::ArgMatches) {
 
     // Clone the package.
     let pkg_url = format!("{}/{}", mpr_url, pkg);
-    let cmd = vec!["git", "clone", "--h", &pkg_url];
-    let exit_code = util::run_command(&cmd);
+    let cmd = util::CommandInfo {
+        args: &vec!["git", "clone", &pkg_url],
+        capture: false,
+        stdin: None,
+    };
+    let exit_code = util::run_command(&cmd).exit_status;
 
     if !exit_code.success() {
         message::error("Failed to clone package.");

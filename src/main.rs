@@ -1,12 +1,14 @@
 mod clone;
+mod comment;
 mod info;
+mod list_comments;
 mod message;
 mod mpr_cache;
 mod search;
 mod util;
 mod whoami;
 
-use clap::{self, Arg, Command};
+use clap::{self, Arg, Command, PossibleValue};
 
 #[quit::main]
 #[rustfmt::skip]
@@ -44,6 +46,23 @@ fn main() {
                 )
         )
         .subcommand(
+            Command::new("comment")
+                .arg_required_else_help(true)
+                .about("Comment on a package page")
+                .arg(
+                    Arg::new("pkg")
+                        .help("The package to comment on")
+                        .required(true)
+                        .takes_value(true)
+                )
+                .arg(
+                    Arg::new("msg")
+                        .help("The comment to post")
+                        .short('m')
+                        .long("msg")
+                )
+        )
+        .subcommand(
             Command::new("info")
                 .arg_required_else_help(true)
                 .about("View information about a package")
@@ -60,6 +79,28 @@ fn main() {
                 )
         )
         .subcommand(
+            Command::new("list-comments")
+                .arg_required_else_help(true)
+                .about("List the comments on a package")
+                .arg(
+                    Arg::new("pkg")
+                        .help("The package to view comments for")
+                        .required(true)
+                )
+                .arg(
+                    Arg::new("paging")
+                        .help("When to send output to a pager")
+                        .long("paging")
+                        .takes_value(true)
+                        .default_value("auto")
+                        .value_parser([
+                            PossibleValue::new("auto"),
+                            PossibleValue::new("always"),
+                            PossibleValue::new("never")
+                        ])
+                )
+        )
+        .subcommand(
             Command::new("search")
                 .about("Search the MPR for a package")
                 .arg_required_else_help(true)
@@ -68,7 +109,7 @@ fn main() {
                         .required(true)
                         .help("The query to search for")
                         .multiple_values(true)
-                ),
+                )
         )
         .subcommand(
             Command::new("whoami")
@@ -78,7 +119,9 @@ fn main() {
 
     match cmd.subcommand() {
         Some(("clone", args)) => clone::clone(args),
+        Some(("comment", args)) => comment::comment(args),
         Some(("info", args)) => info::info(args),
+        Some(("list-comments", args)) => list_comments::list_comments(args),
         Some(("search", args)) => search::search(args),
         Some(("whoami", args)) => whoami::whoami(args),
         _                      => {},

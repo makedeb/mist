@@ -1,7 +1,8 @@
 use crate::{message, mpr_cache};
 use serde::{Deserialize, Serialize};
 use std::{
-    process::{Command, ExitStatus},
+    io::Write,
+    process::{Command, ExitStatus, Stdio},
     str,
 };
 
@@ -23,14 +24,8 @@ impl<'a> AuthenticatedRequest<'a> {
         Self { api_token, mpr_url }
     }
 
-    pub fn get(&self, path: &str) -> String {
-        // Make the request.
-        let client = reqwest::blocking::Client::new();
-        let resp = match client
-            .get(format!("{}/api/{}", self.mpr_url, path))
-            .header("Authorization", self.api_token)
-            .send()
-        {
+    fn handle_response(&self, resp: reqwest::Result<reqwest::blocking::Response>) -> String {
+        let resp = match resp {
             Ok(resp) => resp,
             Err(err) => {
                 message::error(&format!("Failed to make request [{}]", err));
@@ -51,23 +46,97 @@ impl<'a> AuthenticatedRequest<'a> {
             }
         }
 
-        resp_text
+        resp_text.to_owned()
+    }
+
+    pub fn get(&self, path: &str) -> String {
+        // Make the request.
+        let client = reqwest::blocking::Client::new();
+        let resp = client
+            .get(format!("{}/api/{}", self.mpr_url, path))
+            .header("Authorization", self.api_token)
+            .send();
+
+        self.handle_response(resp)
+    }
+
+    pub fn post(&self, path: &str, body: String) -> String {
+        // Make the request.
+        let client = reqwest::blocking::Client::new();
+        let resp = client
+            .post(format!("{}/api/{}", self.mpr_url, path))
+            .body(body)
+            .header("Authorization", self.api_token)
+            .send();
+
+        self.handle_response(resp)
     }
 }
 
-// Function to run a command, and abort if it fails.
-pub fn run_command(args: &Vec<&str>) -> ExitStatus {
-    let cmd = args[0];
-    let cmd_args = &args[1..];
+// Structs and functions to run a command, and abort if it fails.
+pub struct CommandInfo<'a> {
+    pub args: &'a Vec<&'a str>,
+    pub capture: bool,
+    pub stdin: Option<&'a str>,
+}
 
-    let result = Command::new(cmd).args(cmd_args).spawn();
+pub struct CommandResult {
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
+    pub exit_status: ExitStatus,
+}
 
-    match result {
-        Ok(mut child) => child.wait().unwrap(),
+pub fn run_command(cmd: &CommandInfo) -> CommandResult {
+    let cmd_name = cmd.args[0];
+    let cmd_args = &cmd.args[1..];
+    // Functions like 'Command::stdin()' return references to the object created by
+    // 'Command::new()', which returns the object itself.
+    // We want to only interact with references to the object from hereon out.
+    let mut _result = Command::new(cmd_name);
+    let mut result = &mut _result;
+    result = result.args(cmd_args);
+
+    // If we passed in stdin, set up the command to accept it.
+    if let Some(_) = cmd.stdin {
+        result = result.stdin(Stdio::piped());
+    }
+
+    // Take in stdout and stderr if needed.
+    if cmd.capture {
+        result = result.stdout(Stdio::piped());
+        result = result.stderr(Stdio::piped());
+    }
+
+    // Start the subprocess.
+    let mut result = match result.spawn() {
+        Ok(child) => child,
         Err(err) => {
-            message::error(&format!("Failed to run command {:?} [{}]", args, err));
+            message::error(&format!(
+                "Failed to run command. [{:?}] [{}]",
+                cmd.args, err
+            ));
             quit::with_code(exitcode::UNAVAILABLE);
         }
+    };
+
+    // If we passed in stdin previously, pass in our stdin.
+    if let Some(stdin) = cmd.stdin {
+        result
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(stdin.as_bytes())
+            .unwrap();
+    }
+
+    // Wait for the command to exit.
+    let prog_exit = result.wait_with_output().unwrap();
+
+    // Return the result.
+    CommandResult {
+        stdout: prog_exit.stdout,
+        stderr: prog_exit.stderr,
+        exit_status: prog_exit.status,
     }
 }
 
