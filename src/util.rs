@@ -46,7 +46,7 @@ impl<'a> AuthenticatedRequest<'a> {
             }
         }
 
-        resp_text.to_owned()
+        resp_text
     }
 
     pub fn get(&self, path: &str) -> String {
@@ -97,7 +97,7 @@ pub fn run_command(cmd: &CommandInfo) -> CommandResult {
     result = result.args(cmd_args);
 
     // If we passed in stdin, set up the command to accept it.
-    if let Some(_) = cmd.stdin {
+    if cmd.stdin.is_some() {
         result = result.stdin(Stdio::piped());
     }
 

@@ -11,26 +11,29 @@ struct Comment {
 }
 
 pub fn list_comments(args: &clap::ArgMatches) {
-    let pkg: &String = args.get_one("pkg").unwrap();
+    let pkgbase: &String = args.get_one("pkg").unwrap();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
     let paging = args.get_one::<String>("paging").unwrap().as_str();
     let cache = mpr_cache::new(mpr_url);
 
-    let mut pkgnames: Vec<&String> = Vec::new();
+    let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of packages.
     for pkg in &cache {
-        pkgnames.push(&pkg.pkgname);
+        pkgbases.push(&pkg.pkgbase);
     }
 
     // Abort if the package base doesn't exist.
-    if !pkgnames.contains(&pkg) {
-        message::error(&format!("Package '{}' doesn't exist on the MPR.", pkg));
+    if !pkgbases.contains(&pkgbase) {
+        message::error(&format!(
+            "Package base '{}' doesn't exist on the MPR.",
+            pkgbase
+        ));
         quit::with_code(exitcode::USAGE);
     }
 
     // Get package comments.
-    let resp = match reqwest::blocking::get(format!("{}/api/list-comments/{}", mpr_url, pkg)) {
+    let resp = match reqwest::blocking::get(format!("{}/api/list-comments/{}", mpr_url, pkgbase)) {
         Ok(resp) => resp,
         Err(err) => {
             message::error(&format!("Failed to make request. [{}]", err));

@@ -1,18 +1,7 @@
-mod clone;
-mod comment;
-mod info;
-mod list_comments;
-mod message;
-mod mpr_cache;
-mod pkglist;
-mod search;
-mod util;
-mod whoami;
-
 use clap::{self, Arg, Command, PossibleValue};
 
 #[rustfmt::skip]
-fn get_cli() -> Command<'static> {
+pub fn get_cmd() -> Command<'static> {
     Command::new(clap::crate_name!())
         .version(clap::crate_version!())
         .about(clap::crate_description!())
@@ -100,6 +89,7 @@ fn get_cli() -> Command<'static> {
                         ])
                 )
         )
+        // Used in autocompletions.
         .subcommand(
             Command::new("pkglist")
                 .hide(true)
@@ -119,20 +109,4 @@ fn get_cli() -> Command<'static> {
             Command::new("whoami")
                 .about("Show the currently authenticated user")
         )
-}
-
-#[quit::main]
-fn main() {
-    let cmd_results = get_cli().get_matches();
-
-    match cmd_results.subcommand() {
-        Some(("clone", args)) => clone::clone(args),
-        Some(("comment", args)) => comment::comment(args),
-        Some(("info", args)) => info::info(args),
-        Some(("list-comments", args)) => list_comments::list_comments(args),
-        Some(("pkglist", args)) => pkglist::pkglist(args),
-        Some(("search", args)) => search::search(args),
-        Some(("whoami", args)) => whoami::whoami(args),
-        _ => {}
-    };
 }

@@ -87,7 +87,7 @@ pub fn comment(args: &clap::ArgMatches) {
     let body = json!({ "msg": msg }).to_string();
 
     let request = util::AuthenticatedRequest::new(api_token, mpr_url);
-    let resp_text = request.post(&format!("comment/{}", pkg), body.to_string());
+    let resp_text = request.post(&format!("comment/{}", pkg), body);
 
     // Parse the message.
     let json = serde_json::from_str::<CommentResult>(&resp_text).unwrap();

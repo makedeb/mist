@@ -4,8 +4,15 @@ pkgver=0.3.0
 pkgrel=1
 pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')
-optdepends=('r!less')
-makedepends=('cargo' 'libssl-dev' 'pkg-config')
+optdepends=(
+    'r!less'
+)
+makedepends=(
+    'asciidoctor'
+    'cargo'
+    'libssl-dev'
+    'pkg-config'
+)
 license=('GPL3')
 url='https://github.com/makedeb/mpr-cli'
 
@@ -15,11 +22,15 @@ sha256sums=('SKIP')
 build() {
     cd "${pkgname}-${pkgver}/"
     cargo build --release
+
+    sed "s|\$\${MPR_VERSION}|${pkgver}|" man/mpr.8.adoc
 }
 
 package() {
     cd "${pkgname}-${pkgver}/"
-    install -Dm 755 "target/release/mpr" "${pkgdir}/usr/bin/mpr"
+    install -Dm 755 target/release/mpr "${pkgdir}/usr/bin/mpr"
+    asciidoctor -b manpage -o - man/mpr.1.adoc | install -Dm 644 /dev/stdin "${pkgdir}/usr/share/man/man1/mpr.1"
+    install -Dm 644 completions/mpr.bash "${pkgdir}/usr/share/bash-completion/completions/mpr"
 }
 
 # vim: set sw=4 expandtab:
