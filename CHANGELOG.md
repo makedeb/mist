@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2022-06-25
+### Fixed
+- Make `libssl-dev` a runtime dependency instead of just a build dependency.
+
 ## [0.3.1] - 2022-06-14
 ### Fixed
 - Fixed `sed` command used to set version in man page during builds.
