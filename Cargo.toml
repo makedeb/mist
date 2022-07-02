@@ -1,6 +1,6 @@
 [package]
 name = "mpr"
-version = "0.1.1"
+version = "0.3.3"
 authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
 description = "The official command-line interface for the makedeb Package Repository"
 edition = "2021"
