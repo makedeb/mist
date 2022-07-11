@@ -1,4 +1,4 @@
-use crate::{message, mpr_cache};
+use crate::{cache::MprCache, message};
 use bat::{self, PrettyPrinter};
 use chrono::{TimeZone, Utc};
 use serde::Deserialize;
@@ -15,12 +15,12 @@ pub fn list_comments(args: &clap::ArgMatches) {
     let pkgbase: &String = args.get_one("pkg").unwrap();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
     let paging = args.get_one::<String>("paging").unwrap().as_str();
-    let cache = mpr_cache::new(mpr_url);
+    let mpr_cache = MprCache::new(mpr_url);
 
     let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of packages.
-    for pkg in &cache {
+    for pkg in &mpr_cache.packages {
         pkgbases.push(&pkg.pkgbase);
     }
 

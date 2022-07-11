@@ -1,9 +1,9 @@
+mod cache;
 mod clone;
 mod comment;
 mod info;
 mod list_comments;
 mod message;
-mod mpr_cache;
 mod pkglist;
 mod search;
 mod util;
@@ -65,7 +65,7 @@ fn get_cli() -> Command<'static> {
         .subcommand(
             Command::new("info")
                 .arg_required_else_help(true)
-                .about("View information about a package")
+                .about("View information about an APT/MPR package")
                 .arg(
                     Arg::new("pkg")
                     .help("The package to view")
@@ -106,13 +106,23 @@ fn get_cli() -> Command<'static> {
         )
         .subcommand(
             Command::new("search")
-                .about("Search the MPR for a package")
+                .about("Search for an APT/MPR package")
                 .arg_required_else_help(true)
                 .arg(
                     Arg::new("pkg")
                         .required(true)
                         .help("The query to search for")
                         .multiple_values(true)
+                )
+                .arg(
+                    Arg::new("apt-only")
+                        .help("Filter results to packages available via APT")
+                        .long("apt-only")
+                )
+                .arg(
+                    Arg::new("mpr-only")
+                        .help("Filter results to packages available on the MPR")
+                        .long("mpr-only")
                 )
         )
         .subcommand(

@@ -1,4 +1,4 @@
-use crate::{message, mpr_cache};
+use crate::{cache::MprCache, message};
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -141,11 +141,8 @@ pub fn run_command(cmd: &CommandInfo) -> CommandResult {
 }
 
 // Function that finds the matching package base of a given package.
-pub fn find_pkgbase<'a>(
-    pkgname: &'a str,
-    package_cache: &'a Vec<mpr_cache::MprCache>,
-) -> Option<&'a str> {
-    for pkg in package_cache {
+pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option<&'a str> {
+    for pkg in &package_cache.packages {
         if pkg.pkgname == pkgname {
             return Some(pkg.pkgbase.as_str());
         }

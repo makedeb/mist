@@ -1,14 +1,14 @@
-use crate::{message, mpr_cache, util};
+use crate::{cache::MprCache, message, util};
 
 pub fn clone(args: &clap::ArgMatches) {
     let pkg: &String = args.get_one("pkg").unwrap();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let cache = mpr_cache::new(mpr_url);
+    let mpr_cache = MprCache::new(mpr_url);
 
     let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of package bases.
-    for pkg in &cache {
+    for pkg in &mpr_cache.packages {
         pkgbases.push(&pkg.pkgbase);
     }
 
@@ -18,7 +18,7 @@ pub fn clone(args: &clap::ArgMatches) {
 
         // If there's a pkgbase that builds this package, guide the user to clone that package
         // instead.
-        let pkgbase = util::find_pkgbase(pkg, &cache);
+        let pkgbase = util::find_pkgbase(pkg, &mpr_cache);
 
         match pkgbase {
             Some(pkgbase) => {

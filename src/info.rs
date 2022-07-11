@@ -1,20 +1,24 @@
-use crate::{message, mpr_cache, search, util};
+use crate::{
+    cache::{Cache, MprCache},
+    message, search, util,
+};
+use rust_apt::cache::Cache as AptCache;
 
 pub fn info(args: &clap::ArgMatches) {
     let pkg: &String = args.get_one("pkg").unwrap();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let cache = mpr_cache::new(mpr_url);
-    let mut pkgnames: Vec<&String> = Vec::new();
-
-    // Get a list of packages.
-    for pkg in &cache {
-        pkgnames.push(&pkg.pkgname);
-    }
+    let apt_cache = AptCache::new();
+    let mpr_cache = MprCache::new(mpr_url);
+    let cache = Cache::new(&apt_cache, &mpr_cache);
+    let package_map = cache.package_map();
 
     // Abort if the package base doesn't exist.
-    if !pkgnames.contains(&pkg) {
-        message::error(&format!("Package '{}' doesn't exist on the MPR.", pkg));
-        quit::with_code(exitcode::USAGE);
+    match package_map.get(&pkg) {
+        Some(_) => (),
+        None => {
+            message::error(&format!("Package '{}' doesn't exist on the MPR.", pkg));
+            quit::with_code(exitcode::USAGE);
+        }
     }
 
     // If the user wants to open the web browser page, go to that.
@@ -29,11 +33,6 @@ pub fn info(args: &clap::ArgMatches) {
         quit::with_code(exitcode::OK);
     };
 
-    // Find our pkgbase and print the result.
-    for pkg_item in cache {
-        if &pkg_item.pkgname == pkg {
-            let result = search::pkg_info(&pkg_item);
-            println!("{}", result);
-        }
-    }
+    // Print the info for our package.
+    println!("{}", search::pkg_info(&package_map, pkg));
 }
