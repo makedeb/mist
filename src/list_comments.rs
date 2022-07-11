@@ -2,6 +2,7 @@ use crate::{message, mpr_cache};
 use bat::{self, PrettyPrinter};
 use chrono::{TimeZone, Utc};
 use serde::Deserialize;
+use std::fmt::Write;
 
 #[derive(Deserialize)]
 struct Comment {
@@ -60,12 +61,14 @@ pub fn list_comments(args: &clap::ArgMatches) {
             .format("%Y-%m-%d")
             .to_string();
 
-        comments_str.push_str(&format!(
+        write!(
+            comments_str,
             "# Date: {}\n# Author: {}\n\n{}",
             date,
             comment.user,
             comment.msg.trim()
-        ));
+        )
+        .unwrap();
 
         if index < comments_len {
             comments_str.push_str("\n\n  --------------------\n\n");

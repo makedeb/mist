@@ -2,6 +2,7 @@ use crate::{message, mpr_cache};
 use ansi_term::{Colour, Style};
 use chrono::{TimeZone, Utc};
 use rust_apt::cache::{Cache, PackageSort};
+use std::fmt::Write;
 
 pub fn search(args: &clap::ArgMatches) {
     let pkglist: Vec<&String> = args.get_many("pkg").unwrap().collect();
@@ -57,18 +58,22 @@ pub fn search(args: &clap::ArgMatches) {
 
 pub fn pkg_info(pkg: &mpr_cache::MprCache) -> String {
     let mut result = String::new();
-    result.push_str(&format!(
-        "{}/{}\n",
+    writeln!(
+        result,
+        "{}/{}",
         Colour::Fixed(214).paint(pkg.pkgname.as_str()),
         pkg.version
-    ));
+    )
+    .unwrap();
     match &pkg.pkgdesc {
         Some(pkgdesc) => {
-            result.push_str(&format!(
-                "{} {}\n",
+            writeln!(
+                result,
+                "{} {}",
                 Style::new().bold().paint("Description:"),
                 pkgdesc
-            ));
+            )
+            .unwrap();
         }
 
         None => (),
@@ -76,43 +81,48 @@ pub fn pkg_info(pkg: &mpr_cache::MprCache) -> String {
 
     match &pkg.maintainer {
         Some(maintainer) => {
-            result.push_str(&format!(
-                "{} {}\n",
+            writeln!(
+                result,
+                "{} {}",
                 Style::new().bold().paint("Maintainer:"),
                 maintainer
-            ));
+            )
+            .unwrap();
         }
 
         None => (),
     }
 
-    result.push_str(&format!(
-        "{} {}\n",
+    writeln!(
+        result,
+        "{} {}",
         Style::new().bold().paint("Votes:"),
         &pkg.num_votes
-    ));
+    )
+    .unwrap();
 
-    result.push_str(&format!(
-        "{} {}\n",
+    writeln!(
+        result,
+        "{} {}",
         Style::new().bold().paint("Popularity:"),
         &pkg.popularity
-    ));
+    )
+    .unwrap();
 
     match &pkg.ood {
         Some(ood) => {
             let dt = Utc.timestamp(*ood as i64, 0).format("%Y-%m-%d").to_string();
-            result.push_str(&format!(
+            write!(
+                result,
                 "{} {}",
                 Style::new().bold().paint("Out of Date:"),
                 dt
-            ));
+            )
+            .unwrap();
         }
 
         None => {
-            result.push_str(&format!(
-                "{} N/A",
-                Style::new().bold().paint("Out of Date:")
-            ));
+            write!(result, "{} N/A", Style::new().bold().paint("Out of Date:")).unwrap();
         }
     }
 
