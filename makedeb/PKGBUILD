@@ -1,6 +1,6 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
 pkgname=mpr-cli
-pkgver=0.3.4
+pkgver=0.4.0
 pkgrel=1
 pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')

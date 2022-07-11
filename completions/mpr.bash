@@ -42,7 +42,7 @@ _mpr() {
     fi
 
     case "${nonopts[1]}" in
-        clone|info|search)
+        clone|info)
             case "${prev}" in
                 --token|--mpr-url)
                     return
@@ -95,6 +95,25 @@ _mpr() {
             esac
             
             opts+=('--paging')
+            case "${cur}" in
+                -*)
+                    _mpr_gen_compreply '${opts[@]}' "${cur}"
+                    return
+                    ;;
+                *)
+                    _mpr_pkg_specified_check
+                    return
+                    ;;
+            esac
+            ;;
+        search)
+            case "${prev}" in
+                --token|--mpr-url)
+                    return
+                    ;;
+            esac
+
+            opts+=('--apt-only' '--mpr-only')
             case "${cur}" in
                 -*)
                     _mpr_gen_compreply '${opts[@]}' "${cur}"
