@@ -1,7 +1,7 @@
 # mpr-cli
 This is the repository for the MPR CLI, the official command-line interface for the makedeb Package Repository.
 
-[![Latest build status](https://img.shields.io/drone/build/makedeb/mpr-cli?logo=drone&server=https%3A%2F%2Fdrone.hunterwittenborn.com)](https://drone.hunterwittenborn.com/makedeb/mpr-cli/latest)
+[![Latest deployment status](https://img.shields.io/drone/build/makedeb/mpr-cli?logo=drone&server=https%3A%2F%2Fdrone.hunterwittenborn.com)](https://drone.hunterwittenborn.com/makedeb/mpr-cli/latest)
 
 ## Installation
 Users have a few options for installing the MPR CLI:
@@ -25,6 +25,15 @@ git clone 'https://mpr.makedeb.org/mpr-cli'
 cd mpr-cli/
 makedeb -si
 ```
+
+### From crates.io
+If for whatever reason you'd like to install from crates.io, that's also an option:
+
+```sh
+cargo install mpr
+```
+
+Note that the MPR CLI has tight integration to APT-specific features, so don't count on it working outside of any Debian/Ubuntu based distributions.
 
 > The MPR CLI needs the latest version of the Rust compiler toolchain in order to build. It may work with older releases, but they're not tested against and aren't guaranteed to work. If you're system's repositories don't contain the latest release, the Rust toolchain can be installed from the [MPR](https://mpr.makedeb.org/packages/rustc) or the Prebuilt-MPR.
 

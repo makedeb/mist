@@ -1,9 +1,14 @@
 [package]
 name = "mpr"
-version = "0.3.3"
+version = "0.3.4"
 authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
 description = "The official command-line interface for the makedeb Package Repository"
 edition = "2021"
+homepage = "https://github.com/makedeb/mpr-cli"
+repository = "https://github.com/makedeb/mpr-cli"
+license = "GPL-3.0-or-later"
+keywords = ["makedeb", "mpr", "apt", "mpr-helper", "helper"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 bat = "0.21.0"
