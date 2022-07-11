@@ -29,3 +29,7 @@ makedeb --print-srcinfo | tee .SRCINFO
 git add .
 git commit -m "Bump version to '${pkgver}-${pkgrel}'"
 git push
+
+# Clean up, as crates.io publishing doesn't like a Git directory with uncommitted changes.
+cd ../
+rm "${pkgname}/" -rf

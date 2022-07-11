@@ -1,4 +1,4 @@
-use crate::{message, mpr_cache, util};
+use crate::{cache::MprCache, message, util};
 use serde::Deserialize;
 use serde_json::json;
 use std::fs::File;
@@ -21,10 +21,10 @@ pub fn comment(args: &clap::ArgMatches) {
     };
 
     // Get a list of packages.
-    let cache = mpr_cache::new(mpr_url);
+    let mpr_cache = MprCache::new(mpr_url);
     let mut pkgnames: Vec<&String> = Vec::new();
 
-    for pkg in &cache {
+    for pkg in &mpr_cache.packages {
         pkgnames.push(&pkg.pkgname);
     }
 
