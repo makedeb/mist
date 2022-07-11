@@ -15,6 +15,11 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run unit tests
-        run: .drone/scripts/run-tests.sh
+        run: |
+          sudo chown 'makedeb:makedeb' ./ -R
+          .drone/scripts/setup-pbmpr.sh
+          sudo apt-get install cargo libssl-dev pkg-config -y
+          cargo fmt --check
+          cargo clippy -- -D warnings
 
 # vim: expandtab ts=2 sw=2
