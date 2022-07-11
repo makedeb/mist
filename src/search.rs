@@ -1,6 +1,7 @@
 use crate::{message, mpr_cache};
 use ansi_term::{Colour, Style};
 use chrono::{TimeZone, Utc};
+use rust_apt::cache::{Cache, PackageSort};
 
 pub fn search(args: &clap::ArgMatches) {
     let pkglist: Vec<&String> = args.get_many("pkg").unwrap().collect();
