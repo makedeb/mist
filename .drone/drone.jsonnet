@@ -42,7 +42,8 @@ local deploy() = {
             },
             commands: [
                 ".drone/scripts/setup-pbmpr.sh",
-                "sudo apt-get install cargo libssl-dev pkg-config -y",
+                "sudo apt-get install cargo libssl-dev pkg-config libapt-pkg-dev -y",
+		"rm makedeb/mpr-cli -rf",
                 "cargo publish"
             ]
         }
