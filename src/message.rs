@@ -1,17 +1,13 @@
-use ansi_term::{Colour, Style};
+use crate::color::Colorize;
 
 pub fn info(str: &str) {
-    println!("{}", str);
+    println!("{} {}", "Info:".cyan().bold(), str);
+}
+
+pub fn warning(str: &str) {
+    println!("{} {}", "Err:".yellow().bold(), str);
 }
 
 pub fn error(str: &str) {
-    println!("{} {}", Colour::Red.paint("Err:"), str);
-}
-
-pub fn error_bold(str: &str) {
-    println!(
-        "{} {}",
-        Colour::Red.paint("Err:"),
-        Style::new().bold().paint(str)
-    );
+    println!("{} {}", "Err:".red().bold(), str);
 }

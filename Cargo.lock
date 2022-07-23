@@ -201,9 +201,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.8"
+version = "3.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "190814073e85d238f31ff738fcb0bf6910cedeb73376c87cd69291028966fd83"
+checksum = "54635806b078b7925d6e36810b1755f2a4b5b4d57560432c1ecf60bcbe10602b"
 dependencies = [
  "atty",
  "bitflags",
@@ -244,6 +244,16 @@ checksum = "3538270d33cc669650c4b093848450d380def10c331d38c768e34cac80576e6e"
 dependencies = [
  "termcolor",
  "unicode-width",
+]
+
+[[package]]
+name = "colored"
+version = "2.0.0"
+source = "git+https://github.com/mackwic/colored#11ffd20e7b5d1b48e4de7bb78ced26131ae5e114"
+dependencies = [
+ "atty",
+ "lazy_static",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -948,14 +958,15 @@ dependencies = [
 name = "mpr"
 version = "0.4.2"
 dependencies = [
- "ansi_term",
  "bat",
  "chrono",
- "clap 3.2.8",
+ "clap 3.2.14",
+ "colored",
  "dirs",
  "edit",
  "exitcode",
  "flate2",
+ "lazy_static",
  "quit",
  "regex",
  "reqwest",

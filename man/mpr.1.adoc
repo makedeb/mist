@@ -13,6 +13,7 @@ mpr - The official command-line interface for the makedeb Package Repository
 *mpr* info _pkgname_ [_options_] ...
 *mpr* list-comments _pkgbase_ [_options_] ...
 *mpr* search _query_ ... [_options_] ...
+*mpr* update
 *mpr* whoami [_options_] ...
 
 == DESCRIPTION
@@ -34,6 +35,9 @@ List comments of a package base on the MPR.
 
 *search*::
 Search the package list on the MPR.
+
+*update*::
+Updates the APT cache on the system. The MPR cache is not updated as part of this process, as it automatically gets updated when needed commands find it to be old.
 
 *whoami*::
 Show the currently authenticated user.

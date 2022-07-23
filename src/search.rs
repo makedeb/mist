@@ -1,8 +1,8 @@
 use crate::{
     cache::{Cache, CachePackage, CachePackageSource, MprCache},
+    color::{self, Colorize},
     message,
 };
-use ansi_term::{Colour, Style};
 use chrono::{TimeZone, Utc};
 use rust_apt::cache::Cache as AptCache;
 use std::{collections::HashMap, fmt::Write};
@@ -131,7 +131,12 @@ pub fn pkg_info(package_map: &HashMap<&String, Vec<&CachePackage>>, pkg_str: &St
     let mut sources_str = String::from("[");
 
     for source in sources {
-        write!(sources_str, "{}, ", Colour::Fixed(63).paint(source)).unwrap();
+        write!(
+            sources_str,
+            "{}, ",
+            source.custom_color(*color::UBUNTU_PURPLE)
+        )
+        .unwrap();
     }
 
     // Remove the trailing  ', ' at the end of the string. Then add the closing ']'.
@@ -143,7 +148,7 @@ pub fn pkg_info(package_map: &HashMap<&String, Vec<&CachePackage>>, pkg_str: &St
     writeln!(
         result,
         "{}/{} {}",
-        Colour::Fixed(214).paint(pkg.pkgname.as_str()),
+        pkg.pkgname.as_str().custom_color(*color::UBUNTU_ORANGE),
         pkg.version,
         sources_str
     )
@@ -152,13 +157,7 @@ pub fn pkg_info(package_map: &HashMap<&String, Vec<&CachePackage>>, pkg_str: &St
     // pkgdesc.
     match &pkg.pkgdesc {
         Some(pkgdesc) => {
-            writeln!(
-                result,
-                "{} {}",
-                Style::new().bold().paint("Description:"),
-                pkgdesc
-            )
-            .unwrap();
+            writeln!(result, "{} {}", "Description:".bold(), pkgdesc).unwrap();
         }
 
         None => (),
@@ -167,13 +166,7 @@ pub fn pkg_info(package_map: &HashMap<&String, Vec<&CachePackage>>, pkg_str: &St
     // Maintainer.
     match &pkg.maintainer {
         Some(maintainer) => {
-            writeln!(
-                result,
-                "{} {}",
-                Style::new().bold().paint("Maintainer:"),
-                maintainer
-            )
-            .unwrap();
+            writeln!(result, "{} {}", "Maintainer:".bold(), maintainer).unwrap();
         }
 
         None => (),
@@ -181,26 +174,14 @@ pub fn pkg_info(package_map: &HashMap<&String, Vec<&CachePackage>>, pkg_str: &St
 
     // Votes.
     match &pkg.num_votes {
-        Some(num_votes) => writeln!(
-            result,
-            "{} {}",
-            Style::new().bold().paint("Votes:"),
-            num_votes
-        )
-        .unwrap(),
+        Some(num_votes) => writeln!(result, "{} {}", "Votes:".bold(), num_votes).unwrap(),
 
         None => (),
     }
 
     // Popularity.
     match &pkg.popularity {
-        Some(popularity) => writeln!(
-            result,
-            "{} {}",
-            Style::new().bold().paint("Popularity:"),
-            popularity
-        )
-        .unwrap(),
+        Some(popularity) => writeln!(result, "{} {}", "Popularity:".bold(), popularity).unwrap(),
 
         None => (),
     }
@@ -210,17 +191,11 @@ pub fn pkg_info(package_map: &HashMap<&String, Vec<&CachePackage>>, pkg_str: &St
         match &pkg.ood {
             Some(ood) => {
                 let dt = Utc.timestamp(*ood as i64, 0).format("%Y-%m-%d").to_string();
-                writeln!(
-                    result,
-                    "{} {}",
-                    Style::new().bold().paint("Out of Date:"),
-                    dt
-                )
-                .unwrap();
+                writeln!(result, "{} {}", "Out of Date:".bold(), dt).unwrap();
             }
 
             None => {
-                writeln!(result, "{} N/A", Style::new().bold().paint("Out of Date:")).unwrap();
+                writeln!(result, "{} N/A", "Out of Date:".bold()).unwrap();
             }
         }
     }

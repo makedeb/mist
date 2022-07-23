@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2022-07-23
+### Added
+- Added `update` command.
+
 ## [0.4.2] - 2022-07-11
 Internal changes used to test CI. No changes have been made for end users.
 

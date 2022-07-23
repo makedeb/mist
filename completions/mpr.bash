@@ -26,6 +26,7 @@ _mpr() {
         'info'
         'list-comments'
         'search'
+        'update'
         'whoami'
     )
     local opts=(
@@ -124,6 +125,15 @@ _mpr() {
                     return
                     ;;
             esac
+            ;;
+        update)
+            case "${prev}" in
+                --token|--mpr-url)
+                    return
+                    ;;
+            esac
+
+            _mpr_gen_compreply '${opts[@]}' "${cur}"
             ;;
         whoami)
             case "${prev}" in

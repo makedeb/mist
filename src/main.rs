@@ -1,11 +1,13 @@
 mod cache;
 mod clone;
+mod color;
 mod comment;
 mod info;
 mod list_comments;
 mod message;
 mod pkglist;
 mod search;
+mod update;
 mod util;
 mod whoami;
 
@@ -126,6 +128,10 @@ fn get_cli() -> Command<'static> {
                 )
         )
         .subcommand(
+            Command::new("update")
+                .about("Update the APT cache on the system")
+        )
+        .subcommand(
             Command::new("whoami")
                 .about("Show the currently authenticated user")
         )
@@ -142,6 +148,7 @@ fn main() {
         Some(("list-comments", args)) => list_comments::list_comments(args),
         Some(("pkglist", args)) => pkglist::pkglist(args),
         Some(("search", args)) => search::search(args),
+        Some(("update", args)) => update::update(args),
         Some(("whoami", args)) => whoami::whoami(args),
         _ => {}
     };

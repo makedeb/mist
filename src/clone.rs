@@ -30,7 +30,7 @@ pub fn clone(args: &clap::ArgMatches) {
                     )
                 );
 
-                message::error_bold(&format!("    {} clone '{}'", clap::crate_name!(), pkgbase));
+                message::error(&format!("    {} clone '{}'", clap::crate_name!(), pkgbase));
             }
 
             None => (),
