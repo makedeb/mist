@@ -1,4 +1,4 @@
-# mist
+# Mist
 This is the repository for Mist, the official helper for the makedeb Package Repository.
 
 [![Latest deployment status](https://img.shields.io/drone/build/makedeb/mist?logo=drone&server=https%3A%2F%2Fdrone.hunterwittenborn.com)](https://drone.hunterwittenborn.com/makedeb/mist/latest)
