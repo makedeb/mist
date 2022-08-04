@@ -6,9 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2022-08-03
+### Added
+Added symlink in PKGBUILD for ease of transition from `mpr-cli` to `mist`.
 ## [0.6.1] - 2022-08-03
 ### Added
-Add needed fields in PKGBUILD for transition from `mpr-cli` to `mist`.
+Added needed fields in PKGBUILD for transition from `mpr-cli` to `mist`.
 
 ## [0.6.0] - 2022-08-03
 ### Changed
