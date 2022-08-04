@@ -1,21 +1,21 @@
-_mist_get_pkglist() {
+_mari_get_pkglist() {
     mapfile -t opts < <("${words[0]}" pkglist)
 }
 
-_mist_gen_compreply() {
+_mari_gen_compreply() {
     mapfile -t COMPREPLY < <(compgen -W "${1}" -- "${2}")
 }
 
-_mist_pkg_specified_check() {
+_mari_pkg_specified_check() {
     if [[ "${#nonopts[@]}"  -gt 3 ]]; then
-        _mist_gen_compreply '${opts[@]}' "${cur}"
+        _mari_gen_compreply '${opts[@]}' "${cur}"
     else
-        _mist_get_pkglist
-        _mist_gen_compreply '${opts[@]}' "${cur}"
+        _mari_get_pkglist
+        _mari_gen_compreply '${opts[@]}' "${cur}"
     fi
 }
 
-_mist() {
+_mari() {
     local cur prev words cword
     _init_completion || return
 
@@ -52,11 +52,11 @@ _mist() {
 
             case "${cur}" in
                 -*)
-                    _mist_gen_compreply '${opts[@]}' "${cur}"
+                    _mari_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mari_pkg_specified_check
                     return
                     ;;
             esac
@@ -71,11 +71,11 @@ _mist() {
             opts+=('--msg')
             case "${cur}" in
                 -*)
-                    _mist_gen_compreply '${opts[@]}' "${cur}"
+                    _mari_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mari_pkg_specified_check
                     return
                     ;;
             esac
@@ -90,7 +90,7 @@ _mist() {
                     ;;
                 --paging)
                     opts=('auto' 'never' 'always')
-                    _mist_gen_compreply '${opts[@]}' "${cur}"
+                    _mari_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
             esac
@@ -98,11 +98,11 @@ _mist() {
             opts+=('--paging')
             case "${cur}" in
                 -*)
-                    _mist_gen_compreply '${opts[@]}' "${cur}"
+                    _mari_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mari_pkg_specified_check
                     return
                     ;;
             esac
@@ -117,11 +117,11 @@ _mist() {
             opts+=('--apt-only' '--mpr-only')
             case "${cur}" in
                 -*)
-                    _mist_gen_compreply '${opts[@]}' "${cur}"
+                    _mari_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mari_pkg_specified_check
                     return
                     ;;
             esac
@@ -133,7 +133,7 @@ _mist() {
                     ;;
             esac
 
-            _mist_gen_compreply '${opts[@]}' "${cur}"
+            _mari_gen_compreply '${opts[@]}' "${cur}"
             ;;
         whoami)
             case "${prev}" in
@@ -142,11 +142,11 @@ _mist() {
                     ;;
             esac
 
-            _mist_gen_compreply '${opts[@]}' "${cur}"
+            _mari_gen_compreply '${opts[@]}' "${cur}"
             return
             ;;
     esac
 }
 
-complete -F _mist mist
+complete -F _mari mari
 # vim: set sw=4 expandtab:

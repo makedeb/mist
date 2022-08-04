@@ -915,6 +915,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "mari"
+version = "0.6.2"
+dependencies = [
+ "bat",
+ "chrono",
+ "clap 3.2.16",
+ "colored",
+ "dirs",
+ "edit",
+ "exitcode",
+ "flate2",
+ "lazy_static",
+ "quit",
+ "regex",
+ "reqwest",
+ "rust-apt",
+ "serde",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -951,28 +973,6 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys",
-]
-
-[[package]]
-name = "mist"
-version = "0.4.2"
-dependencies = [
- "bat",
- "chrono",
- "clap 3.2.16",
- "colored",
- "dirs",
- "edit",
- "exitcode",
- "flate2",
- "lazy_static",
- "quit",
- "regex",
- "reqwest",
- "rust-apt",
- "serde",
- "serde_json",
- "tempfile",
 ]
 
 [[package]]

@@ -1,11 +1,11 @@
 [package]
-name = "mist"
+name = "mari"
 version = "0.6.2"
 authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
 description = "The official command-line interface for the makedeb Package Repository"
 edition = "2021"
-homepage = "https://github.com/makedeb/mist"
-repository = "https://github.com/makedeb/mist"
+homepage = "https://github.com/makedeb/mari"
+repository = "https://github.com/makedeb/mari"
 license = "GPL-3.0-or-later"
 keywords = ["makedeb", "mpr", "apt", "mpr-helper", "helper"]
 categories = ["command-line-utilities"]
