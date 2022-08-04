@@ -1,6 +1,6 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
-pkgname=mari
-pkgver=0.7.0
+pkgname=mist
+pkgver=0.8.0
 pkgrel=1
 pkgdesc='The official helper for the makedeb Package Repository'
 arch=('any')
@@ -17,10 +17,10 @@ makedepends=(
     'pkg-config'
 )
 license=('GPL3')
-url='https://github.com/makedeb/mari'
+url='https://github.com/makedeb/mist'
 
-# Transition stuff for the package rename from 'mist' to 'mari'.
-conflicts=('mari<0.7.0')
+# Transition stuff for the package rename from 'mpr-cli' to 'mist'.
+conflicts=('mpr-cli<0.5.2')
 replaces=("${conflicts[@]}")
 
 source=("${url}/archive/refs/tags/v${pkgver}.tar.gz")
@@ -30,17 +30,17 @@ build() {
     cd "${pkgname}-${pkgver}/"
     cargo build --release
 
-    sed -i "s|:mansource: Git|:mansource: ${pkgver}|" man/mari.1.adoc
+    sed -i "s|:mansource: Git|:mansource: ${pkgver}|" man/mist.1.adoc
 }
 
 package() {
     cd "${pkgname}-${pkgver}/"
-    install -Dm 755 target/release/mari "${pkgdir}/usr/bin/mari"
-    asciidoctor -b manpage -o - man/mari.1.adoc | install -Dm 644 /dev/stdin "${pkgdir}/usr/share/man/man1/mari.1"
-    install -Dm 644 completions/mari.bash "${pkgdir}/usr/share/bash-completion/completions/mari"
+    install -Dm 755 target/release/mist "${pkgdir}/usr/bin/mist"
+    asciidoctor -b manpage -o - man/mist.1.adoc | install -Dm 644 /dev/stdin "${pkgdir}/usr/share/man/man1/mist.1"
+    install -Dm 644 completions/mist.bash "${pkgdir}/usr/share/bash-completion/completions/mist"
 
-    # Transition stuff for the package rename from 'mist' to 'mari'.
-    ln -s '/usr/bin/mari' "${pkgdir}/usr/bin/mist"
+    # Transition stuff for the package rename from 'mpr-cli' to 'mist'.
+    ln -s '/usr/bin/mist' "${pkgdir}/usr/bin/mpr"
 }
 
 # vim: set sw=4 expandtab:
