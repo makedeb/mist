@@ -1,21 +1,21 @@
-_mpr_get_pkglist() {
+_mist_get_pkglist() {
     mapfile -t opts < <("${words[0]}" pkglist)
 }
 
-_mpr_gen_compreply() {
+_mist_gen_compreply() {
     mapfile -t COMPREPLY < <(compgen -W "${1}" -- "${2}")
 }
 
-_mpr_pkg_specified_check() {
+_mist_pkg_specified_check() {
     if [[ "${#nonopts[@]}"  -gt 3 ]]; then
-        _mpr_gen_compreply '${opts[@]}' "${cur}"
+        _mist_gen_compreply '${opts[@]}' "${cur}"
     else
-        _mpr_get_pkglist
-        _mpr_gen_compreply '${opts[@]}' "${cur}"
+        _mist_get_pkglist
+        _mist_gen_compreply '${opts[@]}' "${cur}"
     fi
 }
 
-_mpr() {
+_mist() {
     local cur prev words cword
     _init_completion || return
 
@@ -52,11 +52,11 @@ _mpr() {
 
             case "${cur}" in
                 -*)
-                    _mpr_gen_compreply '${opts[@]}' "${cur}"
+                    _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mpr_pkg_specified_check
+                    _mist_pkg_specified_check
                     return
                     ;;
             esac
@@ -71,11 +71,11 @@ _mpr() {
             opts+=('--msg')
             case "${cur}" in
                 -*)
-                    _mpr_gen_compreply '${opts[@]}' "${cur}"
+                    _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mpr_pkg_specified_check
+                    _mist_pkg_specified_check
                     return
                     ;;
             esac
@@ -90,7 +90,7 @@ _mpr() {
                     ;;
                 --paging)
                     opts=('auto' 'never' 'always')
-                    _mpr_gen_compreply '${opts[@]}' "${cur}"
+                    _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
             esac
@@ -98,11 +98,11 @@ _mpr() {
             opts+=('--paging')
             case "${cur}" in
                 -*)
-                    _mpr_gen_compreply '${opts[@]}' "${cur}"
+                    _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mpr_pkg_specified_check
+                    _mist_pkg_specified_check
                     return
                     ;;
             esac
@@ -117,11 +117,11 @@ _mpr() {
             opts+=('--apt-only' '--mpr-only')
             case "${cur}" in
                 -*)
-                    _mpr_gen_compreply '${opts[@]}' "${cur}"
+                    _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mpr_pkg_specified_check
+                    _mist_pkg_specified_check
                     return
                     ;;
             esac
@@ -133,7 +133,7 @@ _mpr() {
                     ;;
             esac
 
-            _mpr_gen_compreply '${opts[@]}' "${cur}"
+            _mist_gen_compreply '${opts[@]}' "${cur}"
             ;;
         whoami)
             case "${prev}" in
@@ -142,11 +142,11 @@ _mpr() {
                     ;;
             esac
 
-            _mpr_gen_compreply '${opts[@]}' "${cur}"
+            _mist_gen_compreply '${opts[@]}' "${cur}"
             return
             ;;
     esac
 }
 
-complete -F _mpr mpr
+complete -F _mist mist
 # vim: set sw=4 expandtab:

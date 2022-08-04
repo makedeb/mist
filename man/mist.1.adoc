@@ -1,23 +1,23 @@
 = MAKEDEB(1)
 :doctype: manpage
 :hardbreaks:
-:manmanual: MPR CLI
+:manmanual: Mist
 :mansource: Git
 
 == NAME
-mpr - The official command-line interface for the makedeb Package Repository
+mist - The official helper for the makedeb Package Repository
 
 == SYNOPSIS
-*mpr* clone _pkgbase_ [_options_] ...
-*mpr* comment _pkgbase_ [_options_] ...
-*mpr* info _pkgname_ [_options_] ...
-*mpr* list-comments _pkgbase_ [_options_] ...
-*mpr* search _query_ ... [_options_] ...
-*mpr* update
-*mpr* whoami [_options_] ...
+*mist* clone _pkgbase_ [_options_] ...
+*mist* comment _pkgbase_ [_options_] ...
+*mist* info _pkgname_ [_options_] ...
+*mist* list-comments _pkgbase_ [_options_] ...
+*mist* search _query_ ... [_options_] ...
+*mist* update
+*mist* whoami [_options_] ...
 
 == DESCRIPTION
-*mpr* is a command-line interface for interacting with the makedeb Package Repository.
+*mist* is a command-line interface for interacting with the makedeb Package Repository.
 
 The *comment* and *whoami* commands both require authentication via an API key in order to run. An API key can be obtained via the MPR web interface on the user's account page, and can be passed into this program via the *--token* argument or the *MPR_TOKEN* environment variable, the former being described in *OPTIONS*, and the latter in *ENVIRONMENT*.
 
@@ -48,7 +48,7 @@ Run each command with *--help* to see available options.
 == BUGS
 Issues, as well as feature requests, should be reported on the project's GitHub page:
 
-https://github.com/makedeb/mpr-cli/issues
+https://github.com/makedeb/mist/issues
 
 Matrix is also used as our primary method of real-time communication, being where most discussions (outside of the issue tracker) take place. All rooms are joined via a Matrix space, which can be accessed via the following:
 
@@ -57,7 +57,7 @@ Matrix is also used as our primary method of real-time communication, being wher
 == AUTHORS
 Hunter Wittenborn <\hunter@hunterwittenborn.com>
 
-A full list of contributors can be found by running *git shortlog -esn* in the MPR CLI's Git repository (linked under *BUGS*).
+A full list of contributors can be found by running *git shortlog -esn* in the Mist's Git repository (linked under *BUGS*).
 
 == SEE ALSO
 *makedeb*(8)

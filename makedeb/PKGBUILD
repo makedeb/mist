@@ -1,8 +1,8 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
-pkgname=mpr-cli
-pkgver=0.5.0
+pkgname=mist
+pkgver=0.6.0
 pkgrel=1
-pkgdesc='The official command-line interface for the makedeb Package Repository'
+pkgdesc='The official helper for the makedeb Package Repository'
 arch=('any')
 depends=(
     'libapt-pkg-dev'
@@ -17,7 +17,7 @@ makedepends=(
     'pkg-config'
 )
 license=('GPL3')
-url='https://github.com/makedeb/mpr-cli'
+url='https://github.com/makedeb/mist'
 
 source=("${url}/archive/refs/tags/v${pkgver}.tar.gz")
 sha256sums=('SKIP')
@@ -26,14 +26,14 @@ build() {
     cd "${pkgname}-${pkgver}/"
     cargo build --release
 
-    sed -i "s|:mansource: Git|:mansource: ${pkgver}|" man/mpr.1.adoc
+    sed -i "s|:mansource: Git|:mansource: ${pkgver}|" man/mist.1.adoc
 }
 
 package() {
     cd "${pkgname}-${pkgver}/"
-    install -Dm 755 target/release/mpr "${pkgdir}/usr/bin/mpr"
-    asciidoctor -b manpage -o - man/mpr.1.adoc | install -Dm 644 /dev/stdin "${pkgdir}/usr/share/man/man1/mpr.1"
-    install -Dm 644 completions/mpr.bash "${pkgdir}/usr/share/bash-completion/completions/mpr"
+    install -Dm 755 target/release/mist "${pkgdir}/usr/bin/mist"
+    asciidoctor -b manpage -o - man/mist.1.adoc | install -Dm 644 /dev/stdin "${pkgdir}/usr/share/man/man1/mist.1"
+    install -Dm 644 completions/mist.bash "${pkgdir}/usr/share/bash-completion/completions/mist"
 }
 
 # vim: set sw=4 expandtab:

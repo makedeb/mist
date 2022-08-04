@@ -32,20 +32,6 @@ local deploy() = {
 	        ssh_key: {from_secret: "ssh_key"}
 	    },
             commands: [".drone/scripts/publish-mpr.sh"]
-        },
-
-        {
-            name: "publish-crates-io",
-            image: "proget.makedeb.org/docker/makedeb/makedeb:ubuntu-jammy",
-            environment: {
-                CARGO_REGISTRY_TOKEN: {from_secret: "crates_api_key"}
-            },
-            commands: [
-                ".drone/scripts/setup-pbmpr.sh",
-                "sudo apt-get install cargo libssl-dev pkg-config libapt-pkg-dev -y",
-		"rm makedeb/mpr-cli -rf",
-                "cargo publish"
-            ]
         }
     ]
 };

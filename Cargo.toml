@@ -1,11 +1,11 @@
 [package]
-name = "mpr"
+name = "mist"
 version = "0.4.2"
 authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
 description = "The official command-line interface for the makedeb Package Repository"
 edition = "2021"
-homepage = "https://github.com/makedeb/mpr-cli"
-repository = "https://github.com/makedeb/mpr-cli"
+homepage = "https://github.com/makedeb/mist"
+repository = "https://github.com/makedeb/mist"
 license = "GPL-3.0-or-later"
 keywords = ["makedeb", "mpr", "apt", "mpr-helper", "helper"]
 categories = ["command-line-utilities"]
