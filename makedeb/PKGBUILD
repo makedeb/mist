@@ -1,6 +1,6 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
 pkgname=mist
-pkgver=0.6.0
+pkgver=0.6.1
 pkgrel=1
 pkgdesc='The official helper for the makedeb Package Repository'
 arch=('any')
@@ -18,6 +18,10 @@ makedepends=(
 )
 license=('GPL3')
 url='https://github.com/makedeb/mist'
+
+# Transition stuff for the package rename from 'mpr-cli' to 'mist'.
+conflicts=('mpr-cli<0.5.2')
+replaces=("${conflicts[@]}")
 
 source=("${url}/archive/refs/tags/v${pkgver}.tar.gz")
 sha256sums=('SKIP')
