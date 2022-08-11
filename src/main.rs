@@ -6,6 +6,7 @@ mod info;
 mod list_comments;
 mod message;
 mod pkglist;
+mod remove;
 mod search;
 mod update;
 mod util;
@@ -107,6 +108,26 @@ fn get_cli() -> Command<'static> {
                 .hide(true)
         )
         .subcommand(
+            Command::new("remove")
+                .about("Remove packages from the system")
+                .arg_required_else_help(true)
+                .arg(
+                    Arg::new("pkg")
+                        .help("The package(s) to remove")
+                        .multiple_values(true)
+                )
+                .arg(
+                    Arg::new("purge")
+                        .help("Remove configuration files along with the package(s)")
+                        .long("purge")
+                )
+                .arg(
+                    Arg::new("autoremove")
+                        .help("Automatically remove any unneeded packages")
+                        .long("autoremove")
+                )
+        )
+        .subcommand(
             Command::new("search")
                 .about("Search for an APT/MPR package")
                 .arg_required_else_help(true)
@@ -147,6 +168,7 @@ fn main() {
         Some(("info", args)) => info::info(args),
         Some(("list-comments", args)) => list_comments::list_comments(args),
         Some(("pkglist", args)) => pkglist::pkglist(args),
+        Some(("remove", args)) => remove::remove(args),
         Some(("search", args)) => search::search(args),
         Some(("update", args)) => update::update(args),
         Some(("whoami", args)) => whoami::whoami(args),

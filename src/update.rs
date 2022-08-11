@@ -1,8 +1,8 @@
 use crate::{color::Colorize, message};
 use rust_apt::{
-    cache::{time_str, unit_str, Cache as AptCache, NumSys},
-    progress::UpdateProgress,
-    raw::apt::Worker,
+    cache::Cache as AptCache,
+    progress::{UpdateProgress, Worker},
+    util::{time_str, unit_str, NumSys},
 };
 
 struct Update {}

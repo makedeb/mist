@@ -5,7 +5,7 @@ pub fn info(str: &str) {
 }
 
 pub fn warning(str: &str) {
-    println!("{} {}", "Err:".yellow().bold(), str);
+    println!("{} {}", "Warning:".yellow().bold(), str);
 }
 
 pub fn error(str: &str) {

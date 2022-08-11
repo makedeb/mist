@@ -1,10 +1,14 @@
 use crate::{cache::MprCache, message};
+use console::Term;
+use rust_apt::util::Exception;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
     process::{Command, ExitStatus, Stdio},
     str,
 };
+
+use core::fmt::Display;
 
 #[derive(Deserialize, Serialize)]
 struct AuthenticationError {
@@ -149,4 +153,38 @@ pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option
     }
 
     None
+}
+
+// Handle errors from APT.
+pub fn handle_errors(err_str: Exception) {
+    for msg in err_str.what().split(';') {
+        if msg.starts_with("E:") {
+            message::error(msg.strip_prefix("E:").unwrap());
+        } else if msg.starts_with("W:") {
+            message::warning(msg.strip_prefix("W:").unwrap());
+        };
+    }
+}
+
+// Format a list of package names in the way APT would.
+pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
+    // All package lines always start with two spaces, so pretend like we have two less characters.
+    let term_width: usize = (Term::stdout().size().1 - 2).into();
+    let mut output = String::from("  ");
+    let mut current_width = 0;
+
+    for _pkgname in pkgnames {
+        let pkgname = _pkgname.as_ref();
+        output.push_str(pkgname);
+        current_width += pkgname.len();
+
+        if current_width > term_width {
+            output.push_str("\n  ");
+            current_width = 0;
+        } else {
+            output.push(' ');
+        }
+    }
+
+    println!("{}", output);
 }

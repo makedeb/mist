@@ -1,4 +1,4 @@
-use crate::message;
+use crate::{color::Colorize, message, util};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use regex::Regex;
 use rust_apt::cache::{Cache as AptCache, PackageSort};
@@ -379,5 +379,123 @@ impl Cache {
             }
             None => false,
         }
+    }
+}
+
+// Run a transaction using our progress reporting.
+pub fn run_transaction(cache: &AptCache, purge: bool) {
+    let mut to_install: Vec<String> = Vec::new();
+    let mut to_remove: Vec<String> = Vec::new();
+    let mut to_upgrade: Vec<String> = Vec::new();
+    let mut to_downgrade: Vec<String> = Vec::new();
+
+    for pkg in cache.packages(&PackageSort::default()) {
+        let pkgname = pkg.name();
+
+        if pkg.marked_install() {
+            to_install.push(pkgname);
+        } else if pkg.marked_delete() {
+            to_remove.push(pkgname);
+        } else if pkg.marked_downgrade() {
+            to_downgrade.push(pkgname);
+        } else if pkg.marked_upgrade() {
+            to_upgrade.push(pkgname);
+        }
+    }
+
+    // Print out the transaction to the user.
+    let is_to_install = !to_install.is_empty();
+    let is_to_remove = !to_remove.is_empty();
+    let is_to_upgrade = !to_upgrade.is_empty();
+    let is_to_downgrade = !to_downgrade.is_empty();
+
+    if is_to_install {
+        println!("{}", "The following packages will be installed:".bold());
+        util::format_apt_pkglist(&to_install);
+        println!();
+    }
+
+    if is_to_remove {
+        if purge {
+            println!(
+                "{}",
+                "The following packages (and their configuration files) will be removed:".bold()
+            );
+        } else {
+            println!("{}", "The following packages will be removed:".bold());
+        }
+
+        util::format_apt_pkglist(&to_remove);
+        println!();
+    }
+
+    if is_to_upgrade {
+        println!("{}", "The following packages will be upgraded:".bold());
+        util::format_apt_pkglist(&to_upgrade);
+        println!();
+    }
+
+    if is_to_downgrade {
+        println!("{}", "The following packages will be DOWNGRADED:".bold());
+        util::format_apt_pkglist(&to_downgrade);
+        println!();
+    }
+
+    if vec![is_to_install, is_to_remove, is_to_upgrade, is_to_downgrade].contains(&true) {
+        let to_install_string = match is_to_install {
+            true => "install".purple(),
+            false => "install".green(),
+        };
+        let to_remove_string = match is_to_remove {
+            true => "remove".purple(),
+            false => "remove".green(),
+        };
+        let to_upgrade_string = match is_to_upgrade {
+            true => "upgrade".purple(),
+            false => "upgrade".green(),
+        };
+        let to_downgrade_string = match is_to_downgrade {
+            true => "downgrade".purple(),
+            false => "downgrade".green(),
+        };
+
+        println!("{}", "Review:".bold());
+
+        println!(
+            "{}",
+            format!(
+                "- {} to {}",
+                to_install.len().to_string().blue(),
+                to_install_string,
+            )
+            .bold()
+        );
+        println!(
+            "{}",
+            format!(
+                "- {} to {}",
+                to_remove.len().to_string().blue(),
+                to_remove_string
+            )
+            .bold()
+        );
+        println!(
+            "{}",
+            format!(
+                "- {} to {}",
+                to_upgrade.len().to_string().blue(),
+                to_upgrade_string
+            )
+            .bold()
+        );
+        println!(
+            "{}",
+            format!(
+                "- {} to {}",
+                to_downgrade.len().to_string().blue(),
+                to_downgrade_string
+            )
+            .bold()
+        );
     }
 }
