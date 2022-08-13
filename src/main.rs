@@ -6,6 +6,7 @@ mod info;
 mod list_comments;
 mod message;
 mod pkglist;
+mod progress;
 mod remove;
 mod search;
 mod update;

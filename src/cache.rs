@@ -1,10 +1,19 @@
-use crate::{color::Colorize, message, util};
+use crate::{
+    color::Colorize,
+    message,
+    progress::{MistAcquireProgress, MistInstallProgress},
+    util,
+};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use regex::Regex;
-use rust_apt::cache::{Cache as AptCache, PackageSort};
+use rust_apt::{
+    cache::{Cache as AptCache, PackageSort},
+    pkgmanager::OrderResult,
+    progress::{InstallProgress, UpdateProgress},
+};
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
-use std::{collections::HashMap, fs, time::SystemTime};
+use std::{collections::HashMap, fs, io, time::SystemTime};
 
 ///////////////////////////
 // Stuff for MPR caches. //
@@ -497,5 +506,37 @@ pub fn run_transaction(cache: &AptCache, purge: bool) {
             )
             .bold()
         );
+    } else {
+        println!("{}", "Nothing found to do, quitting.".bold());
+        quit::with_code(exitcode::OK);
+    }
+
+    print!("{}", "\nWould you like to continue? [Y/n] ".bold());
+    io::stdout().flush().unwrap();
+
+    let mut resp = String::new();
+    io::stdin().read_line(&mut resp).unwrap();
+    resp.pop();
+
+    if !util::is_yes(&resp, true) {
+        println!("{}", "Aborting...".bold());
+    }
+
+    let mut updater: Box<dyn UpdateProgress> = Box::new(MistAcquireProgress {});
+    if let Err(_) = cache.get_archives(&mut cache.records.borrow_mut(), &mut updater) {
+        message::error("Failed to fetch needed archives.");
+        quit::with_code(exitcode::UNAVAILABLE);
+    }
+
+    let mut installer: Box<dyn InstallProgress> = Box::new(MistInstallProgress {});
+    match cache.do_install(&mut installer) {
+        OrderResult::Completed => (),
+        OrderResult::Incomplete => {
+            unimplemented!("`cache.do_install()` returned `OrderResult::Incomplete`. Please report this as an issue.");
+        }
+        OrderResult::Failed => {
+            message::error("There was an issue running the transaction.");
+            quit::with_code(exitcode::UNAVAILABLE);
+        }
     }
 }

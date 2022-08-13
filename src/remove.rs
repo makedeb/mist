@@ -24,7 +24,7 @@ pub fn remove(args: &clap::ArgMatches) {
                 continue;
             }
 
-            pkg.mark_delete(purge).unwrap();
+            pkg.mark_delete(purge).then_some(()).unwrap();
             pkg.protect();
         }
     }
@@ -33,14 +33,14 @@ pub fn remove(args: &clap::ArgMatches) {
     if autoremove {
         for pkg in cache.packages(&PackageSort::default()) {
             if pkg.is_auto_removable() {
-                pkg.mark_delete(purge).unwrap();
+                pkg.mark_delete(purge).then_some(()).unwrap();
                 pkg.protect();
             }
         }
     }
 
     if let Err(err) = cache.resolve(true) {
-        handle_errors(err);
+        handle_errors(&err);
         quit::with_code(exitcode::UNAVAILABLE);
     }
 

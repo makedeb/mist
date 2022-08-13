@@ -156,7 +156,7 @@ pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option
 }
 
 // Handle errors from APT.
-pub fn handle_errors(err_str: Exception) {
+pub fn handle_errors(err_str: &Exception) {
     for msg in err_str.what().split(';') {
         if msg.starts_with("E:") {
             message::error(msg.strip_prefix("E:").unwrap());
@@ -187,4 +187,13 @@ pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
     }
 
     println!("{}", output);
+}
+
+// Check if a response was a "yes" response. 'default' is what to return if 'resp' is empty.
+pub fn is_yes(resp: &str, default: bool) -> bool {
+    if resp.to_lowercase() == "y" || (resp.is_empty() && default) {
+        true
+    } else {
+        false
+    }
 }
