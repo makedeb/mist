@@ -167,7 +167,7 @@ pub fn handle_errors(err_str: &apt_util::Exception) {
 // Format a list of package names in the way APT would.
 pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
     // All package lines always start with two spaces, so pretend like we have two less characters.
-    let term_width: usize = (apt_util::terminal_width() - 2).into();
+    let term_width = apt_util::terminal_width() - 2;
     let mut output = String::from("  ");
     let mut current_width = 0;
 

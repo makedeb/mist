@@ -18,7 +18,7 @@ lazy_static! {
 /// Generate a colored package information entry.
 /// If `name_only` is [`true`], the package name will be returned by itself.
 pub fn generate_pkginfo_entry(
-    pkg_group: &Vec<CachePackage>,
+    pkg_group: &[CachePackage],
     cache: &Cache,
     name_only: bool,
 ) -> String {
@@ -42,7 +42,13 @@ pub fn generate_pkginfo_entry(
     let mut src_str = String::new();
 
     if apt_pkg.is_some() && mpr_pkg.is_some() {
-        write!(src_str, "[{}, {}]", "APT".custom_color(*UBUNTU_PURPLE), "MPR".custom_color(*UBUNTU_PURPLE)).unwrap();
+        write!(
+            src_str,
+            "[{}, {}]",
+            "APT".custom_color(*UBUNTU_PURPLE),
+            "MPR".custom_color(*UBUNTU_PURPLE)
+        )
+        .unwrap();
     } else if apt_pkg.is_some() {
         write!(src_str, "[{}]", "APT".custom_color(*UBUNTU_PURPLE)).unwrap();
     } else if mpr_pkg.is_some() {
@@ -58,43 +64,45 @@ pub fn generate_pkginfo_entry(
     let pkgver: String;
     let pkgdesc: Option<String>;
 
-    if apt_pkg.is_some() && mpr_pkg.is_some() {
-        if cache
-            .apt_cache()
-            .get(&apt_pkg.unwrap().pkgname)
-            .unwrap()
-            .is_installed()
-        {
+    if let Some(apt_pkg_unwrapped) = apt_pkg && let Some(mpr_pkg_unwrapped) = mpr_pkg {
+        if cache.apt_cache().get(&apt_pkg_unwrapped.pkgname).unwrap().is_installed() {
             pkgver = apt_pkg.unwrap().version.clone();
             pkgdesc = apt_pkg.unwrap().pkgdesc.clone();
         } else {
-            let apt_pkgver = &apt_pkg.unwrap().version;
-            let mpr_pkgver = &mpr_pkg.unwrap().version;
+            let apt_pkgver = &apt_pkg_unwrapped.version;
+            let mpr_pkgver = &mpr_pkg_unwrapped.version;
 
             match apt_util::cmp_versions(apt_pkgver, mpr_pkgver) {
                 Ordering::Greater | Ordering::Equal => {
                     pkgver = apt_pkgver.clone();
-                    pkgdesc = apt_pkg.unwrap().pkgdesc.clone();
+                    pkgdesc = apt_pkg_unwrapped.pkgdesc.clone();
                 }
                 Ordering::Less => {
                     pkgver = mpr_pkgver.clone();
-                    pkgdesc = mpr_pkg.unwrap().pkgdesc.clone();
+                    pkgdesc = mpr_pkg_unwrapped.pkgdesc.clone();
                 }
             }
         }
-    } else if mpr_pkg.is_some() {
-        pkgver = mpr_pkg.unwrap().version.clone();
-        pkgdesc= mpr_pkg.unwrap().pkgdesc.clone();
+    } else if let Some(mpr_pkg_unwrapped) = mpr_pkg {
+        pkgver = mpr_pkg_unwrapped.version.clone();
+        pkgdesc = mpr_pkg_unwrapped.pkgdesc.clone();
     } else {
-        pkgver = apt_pkg.unwrap().version.clone();
-        pkgdesc = apt_pkg.unwrap().pkgdesc.clone();
+        let apt_pkg_unwrapped = apt_pkg.unwrap();
+        pkgver = apt_pkg_unwrapped.version.clone();
+        pkgdesc = apt_pkg_unwrapped.pkgdesc.clone();
     }
 
     // Add the first line and description, at long last. This string is the one we'll return at the end of the function.
     write!(return_string, "/{} {}", pkgver, src_str).unwrap();
 
     if let Some(unwrapped_pkgdesc) = pkgdesc {
-        write!(return_string, "\n{} {}", "Description:".bold(), unwrapped_pkgdesc).unwrap();
+        write!(
+            return_string,
+            "\n{} {}",
+            "Description:".bold(),
+            unwrapped_pkgdesc
+        )
+        .unwrap();
     } else {
         write!(return_string, "\n{} N/A", "Description:".bold()).unwrap();
     }
@@ -107,16 +115,31 @@ pub fn generate_pkginfo_entry(
         }
 
         // Votes.
-        write!(return_string, "\n{} {}", "Votes:".bold(), &pkg.num_votes.unwrap()).unwrap();
+        write!(
+            return_string,
+            "\n{} {}",
+            "Votes:".bold(),
+            &pkg.num_votes.unwrap()
+        )
+        .unwrap();
 
         // Popularity.
-        write!(return_string, "\n{} {}", "Popularity:".bold(), &pkg.popularity.unwrap()).unwrap();
+        write!(
+            return_string,
+            "\n{} {}",
+            "Popularity:".bold(),
+            &pkg.popularity.unwrap()
+        )
+        .unwrap();
 
         // Out of Date.
         let ood_date: String;
 
         if let Some(ood_epoch) = pkg.ood {
-            ood_date = Utc.timestamp(ood_epoch as i64, 0).format("%Y-%m-%d").to_string();
+            ood_date = Utc
+                .timestamp(ood_epoch as i64, 0)
+                .format("%Y-%m-%d")
+                .to_string();
         } else {
             ood_date = "N/A".to_owned();
         }
@@ -127,7 +150,14 @@ pub fn generate_pkginfo_entry(
     return_string
 }
 
-pub fn generate_pkginfo_entries(pkgs: &Vec<&Vec<CachePackage>>, cache: &Cache, apt_only: bool, mpr_only: bool, installed_only: bool, name_only: bool) -> String {
+pub fn generate_pkginfo_entries(
+    pkgs: &Vec<&Vec<CachePackage>>,
+    cache: &Cache,
+    apt_only: bool,
+    mpr_only: bool,
+    installed_only: bool,
+    name_only: bool,
+) -> String {
     let mut matches = Vec::new();
     let mut result_string = String::new();
 
@@ -135,29 +165,21 @@ pub fn generate_pkginfo_entries(pkgs: &Vec<&Vec<CachePackage>>, cache: &Cache, a
         let pkgname = &pkg_group.get(0).unwrap().pkgname;
 
         // APT only.
-        if apt_only {
-            if let None = cache.get_apt_pkg(pkgname) {
-                continue;
-            }
+        if apt_only && cache.get_apt_pkg(pkgname).is_none() {
+            continue;
         }
 
         // MPR only.
-        if mpr_only {
-            if let None = cache.get_mpr_pkg(pkgname) {
-                continue;
-            }
+        if mpr_only && cache.get_mpr_pkg(pkgname).is_none() {
+            continue;
         }
 
         // Installed only.
-        if installed_only {
-            match cache.get_apt_pkg(pkgname) {
-                Some(pkg) => {
-                    if !cache.apt_cache().get(pkgname).unwrap().is_installed() {
-                        continue;
-                    }
-                }
-                None => continue,
-            }
+        if installed_only
+            && cache.get_apt_pkg(pkgname).is_some()
+            && !cache.apt_cache().get(pkgname).unwrap().is_installed()
+        {
+            continue;
         }
 
         // Package be passed all the tests bro. We's be adding it to the vector now.
@@ -169,12 +191,12 @@ pub fn generate_pkginfo_entries(pkgs: &Vec<&Vec<CachePackage>>, cache: &Cache, a
     for (index, pkg_group) in matches.iter().enumerate() {
         if name_only {
             result_string.push_str(&pkg_group.get(0).unwrap().pkgname);
-            result_string.push_str("\n");
+            result_string.push('\n');
         } else if index == matches_len - 1 {
-            result_string.push_str(&generate_pkginfo_entry(pkg_group, &cache, name_only));
-            result_string.push_str("\n");
+            result_string.push_str(&generate_pkginfo_entry(pkg_group, cache, name_only));
+            result_string.push('\n');
         } else {
-            result_string.push_str(&generate_pkginfo_entry(pkg_group, &cache, name_only));
+            result_string.push_str(&generate_pkginfo_entry(pkg_group, cache, name_only));
             result_string.push_str("\n\n");
         }
     }

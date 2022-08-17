@@ -13,7 +13,7 @@ optdepends=(
 )
 makedepends=(
     'asciidoctor'
-    'cargo'
+    'rustup'
     'pkg-config'
 )
 license=('GPL3')

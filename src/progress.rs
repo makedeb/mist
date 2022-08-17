@@ -139,7 +139,7 @@ impl InstallProgress for MistInstallProgress {
                 (term_width - PROGRESS_STR_LEN).try_into().unwrap()
             )
             // `Colorize` annoyingly isn't working under replace via `"#".magenta()`, so manually use the escape codes here.
-            .replace("#", "\x1b[35m#\x1b[0m")
+            .replace('#', "\x1b[35m#\x1b[0m")
             .bold()
         );
         io::stdout().flush().unwrap();

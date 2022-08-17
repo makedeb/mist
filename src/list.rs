@@ -1,5 +1,8 @@
-use crate::{cache::{Cache, CachePackage, MprCache}, style};
-use rust_apt::cache::{Cache as AptCache, PackageSort};
+use crate::{
+    cache::{Cache, CachePackage, MprCache},
+    style,
+};
+use rust_apt::cache::Cache as AptCache;
 
 pub fn list(args: &clap::ArgMatches) {
     let pkglist: Vec<&String> = match args.get_many("pkg") {
@@ -27,6 +30,15 @@ pub fn list(args: &clap::ArgMatches) {
         }
     }
 
-    let mut matches: Vec<&Vec<CachePackage>> = Vec::new();
-    print!("{}", style::generate_pkginfo_entries(&candidates, &cache, apt_only, mpr_only, installed_only, name_only));
+    print!(
+        "{}",
+        style::generate_pkginfo_entries(
+            &candidates,
+            &cache,
+            apt_only,
+            mpr_only,
+            installed_only,
+            name_only
+        )
+    );
 }

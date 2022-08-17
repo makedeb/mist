@@ -6,8 +6,7 @@ use crate::{
 };
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use rust_apt::{
-    cache::{Cache as AptCache, PackageSort, Sort},
-    package::Package,
+    cache::{Cache as AptCache, PackageSort},
     pkgmanager::OrderResult,
     progress::{AcquireProgress, InstallProgress},
 };
@@ -263,9 +262,9 @@ pub struct Cache {
     /// The underlying APT cache struct.
     apt_cache: AptCache,
     /// The underlying MPR cache struct.
-    mpr_cache: MprCache,
+    //mpr_cache: MprCache,
     /// A combined list of all packages in the cache.
-    pkglist: Vec<CachePackage>,
+    //pkglist: Vec<CachePackage>,
     /// A map for getting all packages with a certain pkgname. Can be quicker than looping over [`Self::pkglist`].
     pkgmap: HashMap<String, Vec<CachePackage>>,
 }
@@ -275,7 +274,7 @@ impl Cache {
     pub fn new(apt_cache: AptCache, mpr_cache: MprCache) -> Self {
         // Package list.
         let mut pkglist = Vec::new();
-        
+
         for pkg in apt_cache.packages(&PackageSort::default()) {
             let candidate = pkg.candidate().unwrap();
 
@@ -292,7 +291,7 @@ impl Cache {
                 source: CachePackageSource::Apt,
             });
         }
-        
+
         for pkg in mpr_cache.packages() {
             pkglist.push(CachePackage {
                 pkgname: pkg.pkgname.clone(),
@@ -308,12 +307,13 @@ impl Cache {
             });
         }
 
-        /// Package map.
+        // Package map.
         let mut pkgmap: HashMap<String, Vec<CachePackage>> = HashMap::new();
 
         for pkg in &pkglist {
             let pkgname = pkg.pkgname.clone();
 
+            #[allow(clippy::map_entry)]
             if pkgmap.contains_key(&pkgname) {
                 pkgmap.get_mut(&pkgname).unwrap().push(pkg.clone());
             } else {
@@ -323,8 +323,8 @@ impl Cache {
 
         Self {
             apt_cache,
-            mpr_cache,
-            pkglist,
+            //mpr_cache,
+            //pkglist,
             pkgmap,
         }
     }
@@ -335,14 +335,14 @@ impl Cache {
     }
 
     /// Get a reference to the MPR cache passed into this function.
-    pub fn mpr_cache(&self) -> &MprCache {
+    /*pub fn mpr_cache(&self) -> &MprCache {
         &self.mpr_cache
-    }
+    }*/
 
     /// Get a reference to the generated pkglist (contains a combined APT+MPR cache).
-    pub fn pkglist(&self) -> &Vec<CachePackage> {
+    /*pub fn pkglist(&self) -> &Vec<CachePackage> {
         &self.pkglist
-    }
+    }*/
 
     /// Get a reference to the generated pkgmap (a key-value pair with keys of pkgnames and values of lists of packages). Can be quicker than [`Cache::pkglist`] if you're trying to lookup a package.
     pub fn pkgmap(&self) -> &HashMap<String, Vec<CachePackage>> {
@@ -507,7 +507,7 @@ pub fn run_transaction(cache: &AptCache, purge: bool) {
     }
 
     let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
-    if let Err(_) = cache.get_archives(&mut updater) {
+    if cache.get_archives(&mut updater).is_err() {
         message::error("Failed to fetch needed archives.");
         quit::with_code(exitcode::UNAVAILABLE);
     }

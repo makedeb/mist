@@ -1,11 +1,8 @@
 use crate::{
-    cache::{Cache, CachePackage, CachePackageSource, MprCache},
-    message,
-    style::{self, Colorize},
+    cache::{Cache, CachePackage, MprCache},
+    style,
 };
-use chrono::{TimeZone, Utc};
-use rust_apt::cache::{Cache as AptCache, PackageSort};
-use std::{collections::HashMap, fmt::Write};
+use rust_apt::cache::Cache as AptCache;
 
 pub fn search(args: &clap::ArgMatches) {
     let query_list: Vec<&String> = args.get_many("query").unwrap().collect();
@@ -32,14 +29,29 @@ pub fn search(args: &clap::ArgMatches) {
             }
 
             for pkg in pkgs {
-                if pkg.pkgname.contains(query) || pkg.pkgdesc.as_ref().unwrap_or(&"".to_owned()).contains(query) {
-                    if !candidates.contains(&pkg_group) {
-                        candidates.push(pkg_group);
-                    }
+                if (pkg.pkgname.contains(query)
+                    || pkg
+                        .pkgdesc
+                        .as_ref()
+                        .unwrap_or(&"".to_owned())
+                        .contains(query))
+                    && !candidates.contains(&pkg_group)
+                {
+                    candidates.push(pkg_group);
                 }
             }
         }
     }
 
-    print!("{}", style::generate_pkginfo_entries(&candidates, &cache, apt_only, mpr_only, installed_only, name_only));
+    print!(
+        "{}",
+        style::generate_pkginfo_entries(
+            &candidates,
+            &cache,
+            apt_only,
+            mpr_only,
+            installed_only,
+            name_only
+        )
+    );
 }

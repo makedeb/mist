@@ -18,22 +18,13 @@ pub fn clone(args: &clap::ArgMatches) {
 
         // If there's a pkgbase that builds this package, guide the user to clone that package
         // instead.
-        let pkgbase = util::find_pkgbase(pkg, &mpr_cache);
-
-        match pkgbase {
-            Some(pkgbase) => {
-                message::error(
-                    &format!(
-                        "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:",
-                        pkgbase,
-                        &pkg
-                    )
-                );
-
-                message::error(&format!("    {} clone '{}'", clap::crate_name!(), pkgbase));
-            }
-
-            None => (),
+        if let Some(pkgbase) = util::find_pkgbase(pkg, &mpr_cache) {
+            message::error(&format!(
+                "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:",
+                pkgbase,
+                &pkg
+            ));
+            message::error(&format!("    {} clone '{}'", clap::crate_name!(), pkgbase));
         }
 
         quit::with_code(exitcode::USAGE);
