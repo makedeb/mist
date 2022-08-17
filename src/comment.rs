@@ -24,7 +24,7 @@ pub fn comment(args: &clap::ArgMatches) {
     let mpr_cache = MprCache::new(mpr_url);
     let mut pkgnames: Vec<&String> = Vec::new();
 
-    for pkg in &mpr_cache.packages {
+    for pkg in mpr_cache.packages() {
         pkgnames.push(&pkg.pkgname);
     }
 

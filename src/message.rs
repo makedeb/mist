@@ -1,4 +1,4 @@
-use crate::color::Colorize;
+use crate::style::Colorize;
 
 pub fn info(str: &str) {
     println!("{} {}", "Info:".cyan().bold(), str);

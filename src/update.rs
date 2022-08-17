@@ -1,9 +1,9 @@
 use crate::{message, progress::MistAcquireProgress};
-use rust_apt::{cache::Cache as AptCache, progress::UpdateProgress};
+use rust_apt::{cache::Cache as AptCache, progress::AcquireProgress};
 
 pub fn update(_args: &clap::ArgMatches) {
     let cache = AptCache::new();
-    let mut progress: Box<dyn UpdateProgress> = Box::new(MistAcquireProgress {});
+    let mut progress: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
 
     if let Err(error) = cache.update(&mut progress) {
         for msg in error.what().split(';') {

@@ -23,17 +23,13 @@ _mist() {
         'clone'
         'comment'
         'help'
-        'info'
         'list-comments'
+        'remove'
         'search'
         'update'
         'whoami'
     )
-    local opts=(
-        '--mpr-url'
-        '--token'
-    )
-    
+
     # Get a list of arguments that are nonoptions.
     mapfile -t nonopts < <(printf '%s\n' "${words[@]}" | grep -v '^-')
 
@@ -43,9 +39,11 @@ _mist() {
     fi
 
     case "${nonopts[1]}" in
-        clone|info)
+        clone)
+        opts=('--mpr-url')
+
             case "${prev}" in
-                --token|--mpr-url)
+                --mpr-url)
                     return
                     ;;
             esac
@@ -62,13 +60,14 @@ _mist() {
             esac
             ;;
         comment)
+            opts=('--mpr-url' '--msg' '--token')
+
             case "${prev}" in
                 --token|--mpr-url|--msg)
                     return
                     ;;
             esac
 
-            opts+=('--msg')
             case "${cur}" in
                 -*)
                     _mist_gen_compreply '${opts[@]}' "${cur}"
@@ -84,8 +83,10 @@ _mist() {
             return
             ;;
         list-comments)
+            opts=('--mpr-url' '--paging')
+
             case "${prev}" in
-                --token|--mpr-url)
+                --mpr-url)
                     return
                     ;;
                 --paging)
@@ -95,7 +96,6 @@ _mist() {
                     ;;
             esac
             
-            opts+=('--paging')
             case "${cur}" in
                 -*)
                     _mist_gen_compreply '${opts[@]}' "${cur}"
@@ -107,14 +107,19 @@ _mist() {
                     ;;
             esac
             ;;
+        remove)
+            opts=('--autoremove' '--purge')
+            ;;
+
         search)
+            opts=('--mpr-url' '--apt-only' '--mpr-only')
+
             case "${prev}" in
-                --token|--mpr-url)
+                --mpr-url)
                     return
                     ;;
             esac
 
-            opts+=('--apt-only' '--mpr-only')
             case "${cur}" in
                 -*)
                     _mist_gen_compreply '${opts[@]}' "${cur}"
@@ -125,17 +130,10 @@ _mist() {
                     return
                     ;;
             esac
-            ;;
-        update)
-            case "${prev}" in
-                --token|--mpr-url)
-                    return
-                    ;;
-            esac
-
-            _mist_gen_compreply '${opts[@]}' "${cur}"
             ;;
         whoami)
+        opts=('--token' '--mpr-url')
+
             case "${prev}" in
                 --token|--mpr-url)
                     return

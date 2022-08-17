@@ -1,15 +1,15 @@
 use crate::{
-    color::Colorize,
     message,
     progress::{MistAcquireProgress, MistInstallProgress},
+    style::Colorize,
     util,
 };
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use regex::Regex;
 use rust_apt::{
-    cache::{Cache as AptCache, PackageSort},
+    cache::{Cache as AptCache, PackageSort, Sort},
+    package::Package,
     pkgmanager::OrderResult,
-    progress::{InstallProgress, UpdateProgress},
+    progress::{AcquireProgress, InstallProgress},
 };
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
@@ -39,7 +39,7 @@ pub struct MprPackage {
 }
 
 pub struct MprCache {
-    pub packages: Vec<MprPackage>,
+    packages: Vec<MprPackage>,
 }
 
 impl MprCache {
@@ -208,6 +208,10 @@ impl MprCache {
             }
         }
     }
+
+    pub fn packages(&self) -> &Vec<MprPackage> {
+        &self.packages
+    }
 }
 
 fn valid_archive(file: impl Read) -> Result<Vec<MprPackage>, u32> {
@@ -235,13 +239,13 @@ fn valid_archive(file: impl Read) -> Result<Vec<MprPackage>, u32> {
 // Some of these fields only make sense to one type of package, but this kind of cache allows us to
 // combine both types when needed, such as when providing search results.
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum CachePackageSource {
     Apt,
     Mpr,
 }
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct CachePackage {
     pub pkgname: String,
     pub pkgbase: Option<String>,
@@ -252,49 +256,43 @@ pub struct CachePackage {
     pub num_votes: Option<u32>,
     pub popularity: Option<f32>,
     pub ood: Option<u32>,
-    pub current_state: Option<u8>,
     pub source: CachePackageSource,
-    pub is_installed: Option<bool>,
 }
 
 pub struct Cache {
-    pub packages: Vec<CachePackage>,
-    _initialized: bool,
+    /// The underlying APT cache struct.
+    apt_cache: AptCache,
+    /// The underlying MPR cache struct.
+    mpr_cache: MprCache,
+    /// A combined list of all packages in the cache.
+    pkglist: Vec<CachePackage>,
+    /// A map for getting all packages with a certain pkgname. Can be quicker than looping over [`Self::pkglist`].
+    pkgmap: HashMap<String, Vec<CachePackage>>,
 }
 
-// Create a new cache.
 impl Cache {
-    pub fn new(apt_cache: &AptCache, mpr_cache: &MprCache) -> Self {
-        let mut packages: Vec<CachePackage> = Vec::new();
+    /// Create a new cache.
+    pub fn new(apt_cache: AptCache, mpr_cache: MprCache) -> Self {
+        // Package list.
+        let mut pkglist = Vec::new();
 
-        // Add APT packages.
-        let re = Regex::new(r":.*$").unwrap();
-
-        for pkg in apt_cache.packages(&PackageSort::default().names()) {
-            // Foreign architecture have ':{arch}' appended to the package name, but we don't want
-            // that since pkg.arch() contains that needed information anyway.
-            let pkgname = re.replace(&pkg.name(), "").to_string();
-            let version = pkg.candidate().unwrap();
-
-            packages.push(CachePackage {
-                pkgname,
+        for pkg in apt_cache.packages(&PackageSort::default()) {
+            pkglist.push(CachePackage {
+                pkgname: pkg.name(),
                 pkgbase: None,
-                version: version.version(),
-                pkgdesc: Some(version.summary()),
-                arch: Some(version.arch()),
+                version: pkg.candidate().unwrap().version(),
+                pkgdesc: Some(pkg.candidate().unwrap().summary()),
+                arch: Some(pkg.arch()),
                 maintainer: None,
                 num_votes: None,
                 popularity: None,
                 ood: None,
-                current_state: Some(pkg.current_state()),
-                is_installed: Some(pkg.is_installed()),
                 source: CachePackageSource::Apt,
             });
         }
 
-        // Add MPR packages.
-        for pkg in &mpr_cache.packages {
-            packages.push(CachePackage {
+        for pkg in mpr_cache.packages() {
+            pkglist.push(CachePackage {
                 pkgname: pkg.pkgname.clone(),
                 pkgbase: Some(pkg.pkgbase.clone()),
                 version: pkg.version.clone(),
@@ -304,90 +302,73 @@ impl Cache {
                 num_votes: Some(pkg.num_votes),
                 popularity: Some(pkg.popularity),
                 ood: pkg.ood,
-                current_state: None,
-                is_installed: None,
                 source: CachePackageSource::Mpr,
             });
         }
 
-        Cache {
-            packages,
-            _initialized: true,
-        }
-    }
+        /// Package map.
+        let mut pkgmap: HashMap<String, Vec<CachePackage>> = HashMap::new();
 
-    // Get a list of unique pkgnames - if a package exists in both APT repos and the MPR, they'll
-    // be duplicated in the 'Cache.packages' list otherwise.
-    pub fn get_unique_pkgnames(&self) -> Vec<&String> {
-        let mut packages: Vec<&String> = Vec::new();
+        for pkg in &pkglist {
+            let pkgname = pkg.pkgname.clone();
 
-        for pkg in &self.packages {
-            packages.push(&pkg.pkgname);
-        }
-
-        packages.sort_unstable();
-        packages.dedup();
-        packages
-    }
-
-    // Get a list of CachePackage objects that matche a certain pkgname.
-    pub fn package_map(&self) -> HashMap<&String, Vec<&CachePackage>> {
-        let mut packages: HashMap<&String, Vec<&CachePackage>> = HashMap::new();
-
-        for pkg in &self.packages {
-            match packages.get_mut(&&pkg.pkgname) {
-                Some(vec) => vec.push(pkg),
-                None => {
-                    packages.insert(&pkg.pkgname, vec![pkg]);
-                }
+            if pkgmap.contains_key(&pkgname) {
+                pkgmap.get_mut(&pkgname).unwrap().push(pkg.clone());
+            } else {
+                pkgmap.insert(pkgname, vec![pkg.clone()]);
             }
         }
 
-        packages
-    }
-
-    // See if a package is available via APT.
-    // package_map is available from the package_map() function above.
-    pub fn available_apt(
-        &self,
-        package_map: &HashMap<&String, Vec<&CachePackage>>,
-        pkgname: &String,
-    ) -> bool {
-        match package_map.get(pkgname) {
-            Some(packages) => {
-                for pkg in packages {
-                    match pkg.source {
-                        CachePackageSource::Apt => return true,
-                        _ => continue,
-                    }
-                }
-
-                false
-            }
-            None => false,
+        Self {
+            apt_cache,
+            mpr_cache,
+            pkglist,
+            pkgmap,
         }
     }
 
-    // See if a package is available on the MPR.
-    // package_map is available from the package_map() function above.
-    pub fn available_mpr(
-        &self,
-        package_map: &HashMap<&String, Vec<&CachePackage>>,
-        pkgname: &String,
-    ) -> bool {
-        match package_map.get(pkgname) {
-            Some(packages) => {
-                for pkg in packages {
-                    match pkg.source {
-                        CachePackageSource::Mpr => return true,
-                        _ => continue,
-                    }
-                }
+    /// Get a reference to the APT cache passed into this function.
+    pub fn apt_cache(&self) -> &AptCache {
+        &self.apt_cache
+    }
 
-                false
+    /// Get a reference to the MPR cache passed into this function.
+    pub fn mpr_cache(&self) -> &MprCache {
+        &self.mpr_cache
+    }
+
+    /// Get a reference to the generated pkglist (contains a combined APT+MPR cache).
+    pub fn pkglist(&self) -> &Vec<CachePackage> {
+        &self.pkglist
+    }
+
+    /// Get a reference to the generated pkgmap (a key-value pair with keys of pkgnames and values of lists of packages). Can be quicker than [`Cache::pkglist`] if you're trying to lookup a package.
+    pub fn pkgmap(&self) -> &HashMap<String, Vec<CachePackage>> {
+        &self.pkgmap
+    }
+
+    // Get the APT variant of a package.
+    pub fn get_apt_pkg(&self, pkgname: &String) -> Option<&CachePackage> {
+        if let Some(pkglist) = self.pkgmap().get(pkgname) {
+            for pkg in pkglist {
+                if let CachePackageSource::Apt = pkg.source {
+                    return Some(pkg);
+                }
             }
-            None => false,
         }
+        None
+    }
+
+    // Get the MPR variant of a package.
+    pub fn get_mpr_pkg(&self, pkgname: &String) -> Option<&CachePackage> {
+        if let Some(pkglist) = self.pkgmap().get(pkgname) {
+            for pkg in pkglist {
+                if let CachePackageSource::Mpr = pkg.source {
+                    return Some(pkg);
+                }
+            }
+        }
+        None
     }
 }
 
@@ -520,10 +501,11 @@ pub fn run_transaction(cache: &AptCache, purge: bool) {
 
     if !util::is_yes(&resp, true) {
         println!("{}", "Aborting...".bold());
+        quit::with_code(exitcode::OK);
     }
 
-    let mut updater: Box<dyn UpdateProgress> = Box::new(MistAcquireProgress {});
-    if let Err(_) = cache.get_archives(&mut cache.records.borrow_mut(), &mut updater) {
+    let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
+    if let Err(_) = cache.get_archives(&mut updater) {
         message::error("Failed to fetch needed archives.");
         quit::with_code(exitcode::UNAVAILABLE);
     }
@@ -532,7 +514,8 @@ pub fn run_transaction(cache: &AptCache, purge: bool) {
     match cache.do_install(&mut installer) {
         OrderResult::Completed => (),
         OrderResult::Incomplete => {
-            unimplemented!("`cache.do_install()` returned `OrderResult::Incomplete`. Please report this as an issue.");
+            message::error("`cache.do_install()`returned `OrderResult::Incomplete`, which Mist doesn't know how to handle. Please report this as an issue.");
+            quit::with_code(exitcode::UNAVAILABLE);
         }
         OrderResult::Failed => {
             message::error("There was an issue running the transaction.");

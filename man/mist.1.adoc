@@ -10,7 +10,7 @@ mist - The official helper for the makedeb Package Repository
 == SYNOPSIS
 *mist* clone _pkgbase_ [_options_] ...
 *mist* comment _pkgbase_ [_options_] ...
-*mist* info _pkgname_ [_options_] ...
+*mist* list _pkgname_ [_options_] ...
 *mist* list-comments _pkgbase_ [_options_] ...
 *mist* search _query_ ... [_options_] ...
 *mist* update
@@ -27,8 +27,8 @@ Clone the build files for a package base from the MPR.
 *comment*::
 Comment on a package base's page on the MPR.
 
-*info*::
-Get information about a package on the MPR.
+*list*::
+Get information about APT or MPR packages.
 
 *list-comments*::
 List comments of a package base on the MPR.

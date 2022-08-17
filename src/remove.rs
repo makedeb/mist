@@ -1,4 +1,4 @@
-use crate::{cache::run_transaction, message, util::handle_errors};
+use crate::{cache::run_transaction, message, util};
 use rust_apt::cache::{Cache as AptCache, PackageSort};
 
 pub fn remove(args: &clap::ArgMatches) {
@@ -40,7 +40,7 @@ pub fn remove(args: &clap::ArgMatches) {
     }
 
     if let Err(err) = cache.resolve(true) {
-        handle_errors(&err);
+        util::handle_errors(&err);
         quit::with_code(exitcode::UNAVAILABLE);
     }
 

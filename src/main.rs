@@ -1,45 +1,62 @@
 mod cache;
 mod clone;
-mod color;
 mod comment;
-mod info;
+mod list;
 mod list_comments;
 mod message;
-mod pkglist;
 mod progress;
 mod remove;
 mod search;
+mod style;
 mod update;
 mod util;
 mod whoami;
+
+pub use rust_apt::util as apt_util;
 
 use clap::{self, Arg, Command, PossibleValue};
 
 #[rustfmt::skip]
 fn get_cli() -> Command<'static> {
+    // Common arguments used in multiple commands.
+    let token_arg = Arg::new("token")
+        .help("The API token to authenticate to the MPR with")
+        .long("token")
+        .env("MPR_TOKEN")
+        .hide_env_values(true)
+        .takes_value(true)
+        .required(true);
+
+    let mpr_url_arg = Arg::new("mpr-url")
+        .help("URL to access the MPR from")
+        .long("mpr-url")
+        .env("MPR_URL")
+        .hide_env_values(true)
+        .takes_value(true)
+        .default_value("https://mpr.makedeb.org");
+
+    let mpr_only_arg = Arg::new("mpr-only")
+        .help("Filter results to packages available on the MPR")
+        .long("mpr-only");
+    
+    let apt_only_arg = Arg::new("apt-only")
+        .help("Filter results to packages available via APT")
+        .long("apt-only");
+
+    let installed_only_arg = Arg::new("installed-only")
+        .help("Filter results to installed packages")
+        .short('i')
+        .long("installed");
+    
+    let name_only_arg = Arg::new("name-only")
+        .help("Output the package's name without any extra details")
+        .long("name-only");
+
+    // The CLI.
     Command::new(clap::crate_name!())
         .version(clap::crate_version!())
         .about(clap::crate_description!())
         .arg_required_else_help(true)
-        .arg(
-            Arg::new("token")
-                .help("The API token to authenticate to the MPR with")
-                .long("token")
-                .env("MPR_TOKEN")
-                .hide_env_values(true)
-                .global(true)
-                .takes_value(true)
-        )
-        .arg(
-            Arg::new("mpr-url")
-            .help("URL to access the MPR from")
-            .long("mpr-url")
-            .env("MPR_URL")
-            .hide_env_values(true)
-            .global(true)
-            .takes_value(true)
-            .default_value("https://mpr.makedeb.org")
-            )
         .subcommand(
             Command::new("clone")
                 .about("Clone a package base from the MPR")
@@ -48,6 +65,7 @@ fn get_cli() -> Command<'static> {
                         .help("The package to clone")
                         .required(true)
                 )
+                .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("comment")
@@ -65,22 +83,22 @@ fn get_cli() -> Command<'static> {
                         .short('m')
                         .long("msg")
                 )
+                .arg(token_arg.clone())
+                .arg(mpr_url_arg.clone())
         )
         .subcommand(
-            Command::new("info")
-                .arg_required_else_help(true)
-                .about("View information about an APT/MPR package")
-                .arg(
-                    Arg::new("pkg")
-                    .help("The package to view")
-                    .required(true)
-                )
-                .arg(
-                    Arg::new("web")
-                    .help("Open the page for the package in a web browser")
-                    .short('w')
-                    .long("web")
-                )
+            Command::new("list")
+            .about("List packages available via APT and the MPR")
+            .arg(
+                Arg::new("pkg")
+                .help("The package(s) to get information for")
+                .multiple_values(true)
+            )
+            .arg(mpr_only_arg.clone())
+            .arg(apt_only_arg.clone())
+            .arg(installed_only_arg.clone())
+            .arg(name_only_arg.clone())
+            .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("list-comments")
@@ -103,10 +121,7 @@ fn get_cli() -> Command<'static> {
                             PossibleValue::new("never")
                         ])
                 )
-        )
-        .subcommand(
-            Command::new("pkglist")
-                .hide(true)
+                .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("remove")
@@ -138,16 +153,9 @@ fn get_cli() -> Command<'static> {
                         .help("The query to search for")
                         .multiple_values(true)
                 )
-                .arg(
-                    Arg::new("apt-only")
-                        .help("Filter results to packages available via APT")
-                        .long("apt-only")
-                )
-                .arg(
-                    Arg::new("mpr-only")
-                        .help("Filter results to packages available on the MPR")
-                        .long("mpr-only")
-                )
+                .arg(apt_only_arg.clone())
+                .arg(mpr_only_arg.clone())
+                .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("update")
@@ -156,6 +164,8 @@ fn get_cli() -> Command<'static> {
         .subcommand(
             Command::new("whoami")
                 .about("Show the currently authenticated user")
+                .arg(token_arg.clone())
+                .arg(mpr_url_arg.clone())
         )
 }
 
@@ -166,13 +176,12 @@ fn main() {
     match cmd_results.subcommand() {
         Some(("clone", args)) => clone::clone(args),
         Some(("comment", args)) => comment::comment(args),
-        Some(("info", args)) => info::info(args),
+        Some(("list", args)) => list::list(args),
         Some(("list-comments", args)) => list_comments::list_comments(args),
-        Some(("pkglist", args)) => pkglist::pkglist(args),
-        Some(("remove", args)) => remove::remove(args),
+        Some(("remove", args)) => util::with_lock(|| remove::remove(args)),
         Some(("search", args)) => search::search(args),
         Some(("update", args)) => update::update(args),
         Some(("whoami", args)) => whoami::whoami(args),
-        _ => {}
+        _ => unreachable!(),
     };
 }

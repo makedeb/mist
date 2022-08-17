@@ -1,6 +1,4 @@
-use crate::{cache::MprCache, message};
-use console::Term;
-use rust_apt::util::Exception;
+use crate::{apt_util, cache::MprCache, message};
 use serde::{Deserialize, Serialize};
 use std::{
     io::Write,
@@ -146,7 +144,7 @@ pub fn run_command(cmd: &CommandInfo) -> CommandResult {
 
 // Function that finds the matching package base of a given package.
 pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option<&'a str> {
-    for pkg in &package_cache.packages {
+    for pkg in package_cache.packages() {
         if pkg.pkgname == pkgname {
             return Some(pkg.pkgbase.as_str());
         }
@@ -156,7 +154,7 @@ pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option
 }
 
 // Handle errors from APT.
-pub fn handle_errors(err_str: &Exception) {
+pub fn handle_errors(err_str: &apt_util::Exception) {
     for msg in err_str.what().split(';') {
         if msg.starts_with("E:") {
             message::error(msg.strip_prefix("E:").unwrap());
@@ -169,7 +167,7 @@ pub fn handle_errors(err_str: &Exception) {
 // Format a list of package names in the way APT would.
 pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
     // All package lines always start with two spaces, so pretend like we have two less characters.
-    let term_width: usize = (Term::stdout().size().1 - 2).into();
+    let term_width: usize = (apt_util::terminal_width() - 2).into();
     let mut output = String::from("  ");
     let mut current_width = 0;
 
@@ -191,9 +189,20 @@ pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
 
 // Check if a response was a "yes" response. 'default' is what to return if 'resp' is empty.
 pub fn is_yes(resp: &str, default: bool) -> bool {
-    if resp.to_lowercase() == "y" || (resp.is_empty() && default) {
-        true
-    } else {
-        false
+    resp.to_lowercase() == "y" || (resp.is_empty() && default)
+}
+
+// Run a function with the lockfile locked, and abort if there's an error.
+pub fn with_lock<F: Fn()>(func: F) {
+    if let Err(err) = apt_util::apt_lock() {
+        handle_errors(&err);
+        quit::with_code(exitcode::UNAVAILABLE);
+    }
+
+    func();
+
+    if let Err(err) = apt_util::apt_unlock() {
+        handle_errors(&err);
+        quit::with_code(exitcode::UNAVAILABLE);
     }
 }
