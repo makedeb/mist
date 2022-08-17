@@ -4,6 +4,7 @@ mod comment;
 mod list;
 mod list_comments;
 mod message;
+mod quick_list;
 mod progress;
 mod remove;
 mod search;
@@ -124,6 +125,19 @@ fn get_cli() -> Command<'static> {
                 .arg(mpr_url_arg.clone())
         )
         .subcommand(
+            Command::new("quick-list")
+                .about("List available packages quickly for shell completions")
+                .hide(true)
+                .arg(
+                    Arg::new("prefix")
+                        .help("The prefix to limit output to")
+                        .required(true)
+                )
+                .arg(mpr_only_arg.clone().conflicts_with("mpr-only"))
+                .arg(apt_only_arg.clone().conflicts_with("apt-only"))
+                .arg(mpr_url_arg.clone())
+        )
+        .subcommand(
             Command::new("remove")
                 .about("Remove packages from the system")
                 .arg_required_else_help(true)
@@ -148,13 +162,15 @@ fn get_cli() -> Command<'static> {
                 .about("Search for an APT/MPR package")
                 .arg_required_else_help(true)
                 .arg(
-                    Arg::new("pkg")
+                    Arg::new("query")
                         .required(true)
                         .help("The query to search for")
                         .multiple_values(true)
                 )
-                .arg(apt_only_arg.clone())
                 .arg(mpr_only_arg.clone())
+                .arg(apt_only_arg.clone())
+                .arg(installed_only_arg.clone())
+                .arg(name_only_arg.clone())
                 .arg(mpr_url_arg.clone())
         )
         .subcommand(
@@ -178,6 +194,7 @@ fn main() {
         Some(("comment", args)) => comment::comment(args),
         Some(("list", args)) => list::list(args),
         Some(("list-comments", args)) => list_comments::list_comments(args),
+        Some(("quick-list", args)) => quick_list::quick_list(args),
         Some(("remove", args)) => util::with_lock(|| remove::remove(args)),
         Some(("search", args)) => search::search(args),
         Some(("update", args)) => update::update(args),

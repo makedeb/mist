@@ -275,13 +275,15 @@ impl Cache {
     pub fn new(apt_cache: AptCache, mpr_cache: MprCache) -> Self {
         // Package list.
         let mut pkglist = Vec::new();
-
+        
         for pkg in apt_cache.packages(&PackageSort::default()) {
+            let candidate = pkg.candidate().unwrap();
+
             pkglist.push(CachePackage {
                 pkgname: pkg.name(),
                 pkgbase: None,
-                version: pkg.candidate().unwrap().version(),
-                pkgdesc: Some(pkg.candidate().unwrap().summary()),
+                version: candidate.version(),
+                pkgdesc: Some(candidate.summary()),
                 arch: Some(pkg.arch()),
                 maintainer: None,
                 num_votes: None,
@@ -290,7 +292,7 @@ impl Cache {
                 source: CachePackageSource::Apt,
             });
         }
-
+        
         for pkg in mpr_cache.packages() {
             pkglist.push(CachePackage {
                 pkgname: pkg.pkgname.clone(),

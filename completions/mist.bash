@@ -1,5 +1,5 @@
 _mist_get_pkglist() {
-    mapfile -t opts < <("${words[0]}" pkglist)
+    mapfile -t COMPREPLY < <("${words[0]}" quick-list "${@}")
 }
 
 _mist_gen_compreply() {
@@ -10,8 +10,7 @@ _mist_pkg_specified_check() {
     if [[ "${#nonopts[@]}"  -gt 3 ]]; then
         _mist_gen_compreply '${opts[@]}' "${cur}"
     else
-        _mist_get_pkglist
-        _mist_gen_compreply '${opts[@]}' "${cur}"
+        _mist_get_pkglist "${@}"
     fi
 }
 
@@ -54,7 +53,7 @@ _mist() {
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac
@@ -74,7 +73,7 @@ _mist() {
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac
@@ -102,17 +101,28 @@ _mist() {
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac
             ;;
         remove)
             opts=('--autoremove' '--purge')
+
+            case "${cur}" in
+            -*)
+                _mist_gen_compreply '${opts[@]}' "${cur}"
+                return
+                ;;
+            *)
+                _mist_get_pkglist '--apt-only' "${cur}"
+                return
+                ;;
+            esac
             ;;
 
-        search)
-            opts=('--mpr-url' '--apt-only' '--mpr-only')
+        search|list)
+            opts=('--mpr-url' '--apt-only' '--mpr-only' '--name-only' '--installed')
 
             case "${prev}" in
                 --mpr-url)
@@ -126,7 +136,7 @@ _mist() {
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac

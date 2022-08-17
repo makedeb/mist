@@ -32,7 +32,7 @@ pub fn generate_pkginfo_entry(
     let mut return_string = String::new();
 
     // Fancy colored pkgname to the max! :OOOOOOOOOOOOOOOOOO
-    return_string.push_str(&pkgname.custom_color(*UBUNTU_ORANGE));
+    write!(return_string, "{}", pkgname.custom_color(*UBUNTU_ORANGE)).unwrap();
 
     // Get the APT and MPR packages.
     let apt_pkg = cache.get_apt_pkg(&pkgname);
@@ -125,4 +125,59 @@ pub fn generate_pkginfo_entry(
     }
 
     return_string
+}
+
+pub fn generate_pkginfo_entries(pkgs: &Vec<&Vec<CachePackage>>, cache: &Cache, apt_only: bool, mpr_only: bool, installed_only: bool, name_only: bool) -> String {
+    let mut matches = Vec::new();
+    let mut result_string = String::new();
+
+    for pkg_group in pkgs {
+        let pkgname = &pkg_group.get(0).unwrap().pkgname;
+
+        // APT only.
+        if apt_only {
+            if let None = cache.get_apt_pkg(pkgname) {
+                continue;
+            }
+        }
+
+        // MPR only.
+        if mpr_only {
+            if let None = cache.get_mpr_pkg(pkgname) {
+                continue;
+            }
+        }
+
+        // Installed only.
+        if installed_only {
+            match cache.get_apt_pkg(pkgname) {
+                Some(pkg) => {
+                    if !cache.apt_cache().get(pkgname).unwrap().is_installed() {
+                        continue;
+                    }
+                }
+                None => continue,
+            }
+        }
+
+        // Package be passed all the tests bro. We's be adding it to the vector now.
+        matches.push(pkg_group);
+    }
+
+    let matches_len = matches.len();
+
+    for (index, pkg_group) in matches.iter().enumerate() {
+        if name_only {
+            result_string.push_str(&pkg_group.get(0).unwrap().pkgname);
+            result_string.push_str("\n");
+        } else if index == matches_len - 1 {
+            result_string.push_str(&generate_pkginfo_entry(pkg_group, &cache, name_only));
+            result_string.push_str("\n");
+        } else {
+            result_string.push_str(&generate_pkginfo_entry(pkg_group, &cache, name_only));
+            result_string.push_str("\n\n");
+        }
+    }
+
+    result_string
 }

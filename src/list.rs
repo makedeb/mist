@@ -28,47 +28,5 @@ pub fn list(args: &clap::ArgMatches) {
     }
 
     let mut matches: Vec<&Vec<CachePackage>> = Vec::new();
-
-    for pkg_group in candidates {
-        let pkgname = &pkg_group.get(0).unwrap().pkgname;
-
-        // APT only.
-        if apt_only {
-            if let None = cache.get_apt_pkg(pkgname) {
-                continue;
-            }
-        }
-
-        // MPR only.
-        if mpr_only {
-            if let None = cache.get_mpr_pkg(pkgname) {
-                continue;
-            }
-        }
-
-        // Installed only.
-        if installed_only {
-            match cache.get_apt_pkg(pkgname) {
-                Some(pkg) => {
-                    if !cache.apt_cache().get(pkgname).unwrap().is_installed() {
-                        continue;
-                    }
-                }
-                None => continue,
-            }
-        }
-
-        // Package be passed all the tests bro. We's be adding it to the vector now.
-        matches.push(pkg_group);
-    }
-
-    let matches_len = matches.len();
-
-    for (index, pkg_group) in matches.iter().enumerate() {
-        if name_only || index == matches_len - 1 {
-            println!("{}", style::generate_pkginfo_entry(pkg_group, &cache, name_only));
-        } else {
-            println!("{}\n", style::generate_pkginfo_entry(pkg_group, &cache, name_only));
-        }
-    }
+    print!("{}", style::generate_pkginfo_entries(&candidates, &cache, apt_only, mpr_only, installed_only, name_only));
 }
