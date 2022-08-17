@@ -26,7 +26,7 @@ cd mist/
 makedeb -si
 ```
 
-> Mist needs the latest version of the Rust compiler toolchain in order to build. It may work with older releases, but they're not tested against and aren't guaranteed to work. If you're system's repositories don't contain the latest release, the Rust toolchain can be installed from the [MPR](https://mpr.makedeb.org/packages/rustc) or the Prebuilt-MPR.
+> Mist currently requires the nightly version of the Rust compiler toolchain in order to build. To build it locally, it's recommended to use [rustup](https://rustup.rs), which will automatically manage and update the nightly toolchain on your local system. If preferred, rustup can be installed from the [MPR](https://mpr.makedeb.org/packages/rustup) or the Prebuilt-MPR.
 
 ## Contributing
 If there's something you want added/fixed in Mist, feel free to open a pull request. There aren't many guidelines on what you should do quite yet, so just submit your changes and we can figure out what to do from there!
