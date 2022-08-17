@@ -1,6 +1,7 @@
 mod cache;
 mod clone;
 mod comment;
+mod install;
 mod list;
 mod list_comments;
 mod message;
@@ -86,6 +87,17 @@ fn get_cli() -> Command<'static> {
                 )
                 .arg(token_arg.clone())
                 .arg(mpr_url_arg.clone())
+        )
+        .subcommand(
+            Command::new("install")
+            .about("Install packages from APT and the MPR")
+            .arg(
+                Arg::new("pkg")
+                .help("The package(s) to install")
+                .multiple_values(true)
+                .required(true)
+            )
+            .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("list")
@@ -192,6 +204,7 @@ fn main() {
     match cmd_results.subcommand() {
         Some(("clone", args)) => clone::clone(args),
         Some(("comment", args)) => comment::comment(args),
+        Some(("install", args)) => install::install(args),
         Some(("list", args)) => list::list(args),
         Some(("list-comments", args)) => list_comments::list_comments(args),
         Some(("quick-list", args)) => quick_list::quick_list(args),

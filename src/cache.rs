@@ -47,7 +47,7 @@ impl MprCache {
         let cache_dir = match dirs::cache_dir() {
             Some(dir) => dir,
             None => {
-                message::error("Unable to find the xdg cache directory.");
+                message::error("Unable to find the xdg cache directory.\n");
                 quit::with_code(exitcode::UNAVAILABLE);
             }
         };
@@ -61,7 +61,7 @@ impl MprCache {
                 Ok(()) => (),
                 Err(err) => {
                     message::error(&format!(
-                        "Encountered an unknown error while creating the cache directory. [{}]",
+                        "Encountered an unknown error while creating the cache directory. [{}]\n",
                         err
                     ));
                     quit::with_code(exitcode::UNAVAILABLE);
@@ -69,7 +69,7 @@ impl MprCache {
             }
         } else if !mpr_cache_dir.is_dir() {
             message::error(&format!(
-                "Cache path '{}' isn't a directory.",
+                "Cache path '{}' isn't a directory.\n",
                 mpr_cache_dir.display()
             ));
             quit::with_code(exitcode::OSERR);
@@ -105,7 +105,7 @@ impl MprCache {
             Err(err) => {
                 if err.raw_os_error().unwrap() != 2 {
                     message::error(&format!(
-                        "Encountered an unknown error while reading cache. [{}]",
+                        "Encountered an unknown error while reading cache. [{}]\n",
                         err
                     ));
                     quit::with_code(exitcode::OSFILE);
@@ -116,7 +116,7 @@ impl MprCache {
                         Ok(_) => (),
                         Err(err) => {
                             message::error(&format!(
-                                "Encountered an unknown error while reading cache. [{}]",
+                                "Encountered an unknown error while reading cache. [{}]\n",
                                 err
                             ));
                             quit::with_code(exitcode::OSFILE);
@@ -133,14 +133,14 @@ impl MprCache {
                 match reqwest::blocking::get(format!("{}/packages-meta-ext-v2.json.gz", mpr_url)) {
                     Ok(resp) => resp,
                     Err(err) => {
-                        message::error(&format!("Unable to make request. [{}]", err));
+                        message::error(&format!("Unable to make request. [{}]\n", err));
                         quit::with_code(exitcode::UNAVAILABLE);
                     }
                 };
 
             if !resp.status().is_success() {
                 message::error(&format!(
-                    "Failed to download package archive from the MPR. [{}]",
+                    "Failed to download package archive from the MPR. [{}]\n",
                     resp.status()
                 ));
                 quit::with_code(exitcode::TEMPFAIL);
@@ -151,11 +151,11 @@ impl MprCache {
                 Ok(cache) => cache,
                 Err(num) => {
                     if num == 1 {
-                        message::error("Failed to decompress package archive from the MPR.");
+                        message::error("Failed to decompress package archive from the MPR.\n");
                         quit::with_code(exitcode::TEMPFAIL);
                     } else {
                         message::error(
-                            "Failed to verify integrity of package archive from the MPR.",
+                            "Failed to verify integrity of package archive from the MPR.\n",
                         );
                         quit::with_code(exitcode::TEMPFAIL);
                     }
@@ -173,7 +173,7 @@ impl MprCache {
                 Ok(()) => (),
                 Err(err) => {
                     message::error(&format!(
-                        "Failed to write updated package archive. [{}]",
+                        "Failed to write updated package archive. [{}]\n",
                         err
                     ));
                     quit::with_code(exitcode::IOERR);
@@ -189,7 +189,7 @@ impl MprCache {
                 Ok(file) => file,
                 Err(err) => {
                     message::error(&format!(
-                        "Failed to write updated package archive. [{}]",
+                        "Failed to write updated package archive. [{}]\n",
                         err
                     ));
                     quit::with_code(exitcode::IOERR);
@@ -508,7 +508,7 @@ pub fn run_transaction(cache: &AptCache, purge: bool) {
 
     let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
     if cache.get_archives(&mut updater).is_err() {
-        message::error("Failed to fetch needed archives.");
+        message::error("Failed to fetch needed archives.\n");
         quit::with_code(exitcode::UNAVAILABLE);
     }
 
@@ -516,11 +516,11 @@ pub fn run_transaction(cache: &AptCache, purge: bool) {
     match cache.do_install(&mut installer) {
         OrderResult::Completed => (),
         OrderResult::Incomplete => {
-            message::error("`cache.do_install()`returned `OrderResult::Incomplete`, which Mist doesn't know how to handle. Please report this as an issue.");
+            message::error("`cache.do_install()`returned `OrderResult::Incomplete`, which Mist doesn't know how to handle. Please report this as an issue.\n");
             quit::with_code(exitcode::UNAVAILABLE);
         }
         OrderResult::Failed => {
-            message::error("There was an issue running the transaction.");
+            message::error("There was an issue running the transaction.\n");
             quit::with_code(exitcode::UNAVAILABLE);
         }
     }

@@ -14,17 +14,17 @@ pub fn clone(args: &clap::ArgMatches) {
 
     // Abort if the package base doesn't exist.
     if !pkgbases.contains(&pkg) {
-        message::error(&format!("Package base '{}' doesn't exist on the MPR.", pkg));
+        message::error(&format!("Package base '{}' doesn't exist on the MPR.\n", pkg));
 
         // If there's a pkgbase that builds this package, guide the user to clone that package
         // instead.
         if let Some(pkgbase) = util::find_pkgbase(pkg, &mpr_cache) {
             message::error(&format!(
-                "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:",
+                "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:\n",
                 pkgbase,
                 &pkg
             ));
-            message::error(&format!("    {} clone '{}'", clap::crate_name!(), pkgbase));
+            message::error(&format!("    {} clone '{}'\n", clap::crate_name!(), pkgbase));
         }
 
         quit::with_code(exitcode::USAGE);
@@ -40,7 +40,7 @@ pub fn clone(args: &clap::ArgMatches) {
     let exit_code = util::run_command(&cmd).exit_status;
 
     if !exit_code.success() {
-        message::error("Failed to clone package.");
+        message::error("Failed to clone package.\n");
         quit::with_code(exitcode::UNAVAILABLE);
     };
 }

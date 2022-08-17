@@ -1,12 +1,13 @@
-use crate::{apt_util, cache::MprCache, message};
+use crate::{apt_util, cache::MprCache, message, style::Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
-    io::Write,
+    io::{self, Write},
     process::{Command, ExitStatus, Stdio},
     str,
 };
 
 use core::fmt::Display;
+use regex::Regex;
 
 #[derive(Deserialize, Serialize)]
 struct AuthenticationError {
@@ -30,7 +31,7 @@ impl<'a> AuthenticatedRequest<'a> {
         let resp = match resp {
             Ok(resp) => resp,
             Err(err) => {
-                message::error(&format!("Failed to make request [{}]", err));
+                message::error(&format!("Failed to make request [{}]\n", err));
                 quit::with_code(exitcode::UNAVAILABLE);
             }
         };
@@ -43,7 +44,7 @@ impl<'a> AuthenticatedRequest<'a> {
             // TODO: We need to define a more suitable way for machine parsing of errors in the
             // MPR. Maybe something like '{"err_type": "invalid_api_key"}'.
             if json.resp_type == "error" && json.code == "err_invalid_api_key" {
-                message::error("Invalid API key was passed in.");
+                message::error("Invalid API key was passed in.\n");
                 quit::with_code(exitcode::USAGE);
             }
         }
@@ -114,7 +115,7 @@ pub fn run_command(cmd: &CommandInfo) -> CommandResult {
         Ok(child) => child,
         Err(err) => {
             message::error(&format!(
-                "Failed to run command. [{:?}] [{}]",
+                "Failed to run command. [{:?}] [{}]\n",
                 cmd.args, err
             ));
             quit::with_code(exitcode::UNAVAILABLE);
@@ -142,7 +143,7 @@ pub fn run_command(cmd: &CommandInfo) -> CommandResult {
     }
 }
 
-// Function that finds the matching package base of a given package.
+/// Function that finds the matching package base of a given package.
 pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option<&'a str> {
     for pkg in package_cache.packages() {
         if pkg.pkgname == pkgname {
@@ -153,18 +154,18 @@ pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option
     None
 }
 
-// Handle errors from APT.
+/// Handle errors from APT.
 pub fn handle_errors(err_str: &apt_util::Exception) {
     for msg in err_str.what().split(';') {
         if msg.starts_with("E:") {
-            message::error(msg.strip_prefix("E:").unwrap());
+            message::error(&format!("{}\n", msg.strip_prefix("E:").unwrap()));
         } else if msg.starts_with("W:") {
-            message::warning(msg.strip_prefix("W:").unwrap());
+            message::warning(&format!("{}\n", msg.strip_prefix("W:").unwrap()));
         };
     }
 }
 
-// Format a list of package names in the way APT would.
+/// Format a list of package names in the way APT would.
 pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
     // All package lines always start with two spaces, so pretend like we have two less characters.
     let term_width = apt_util::terminal_width() - 2;
@@ -187,12 +188,12 @@ pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
     println!("{}", output);
 }
 
-// Check if a response was a "yes" response. 'default' is what to return if 'resp' is empty.
+/// Check if a response was a "yes" response. 'default' is what to return if 'resp' is empty.
 pub fn is_yes(resp: &str, default: bool) -> bool {
     resp.to_lowercase() == "y" || (resp.is_empty() && default)
 }
 
-// Run a function with the lockfile locked, and abort if there's an error.
+/// Run a function with the lockfile locked, and abort if there's an error.
 pub fn with_lock<F: Fn()>(func: F) {
     if let Err(err) = apt_util::apt_lock() {
         handle_errors(&err);
@@ -205,4 +206,102 @@ pub fn with_lock<F: Fn()>(func: F) {
         handle_errors(&err);
         quit::with_code(exitcode::UNAVAILABLE);
     }
+}
+
+/// Print out a question with options and get the result.
+/// `multi_allowed` specifies if only a single option can be chosen.
+pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) -> Vec<String> {
+    let num_re = Regex::new("^[0-9]*-[0-9]*$|^[0-9]*$").unwrap();
+    let options_len = options.len();
+    message::question(question);
+
+    // Panic if no options were passed in, there's nothing to work with there. This function should only be used internally anyway, so this just gives a heads up that it's being used incorrectly.
+    if options.is_empty() {
+        panic!("No values passed in for `options` parameter");
+    }
+
+    // Print the options.
+    let mut str_options: Vec<String> = Vec::new();
+
+    for (index, item) in options.iter().enumerate() {
+        str_options.push(format!(
+            "[{}] {}",
+            index,
+            item
+        ))
+    };
+
+    format_apt_pkglist(&str_options);
+
+    let print_question = || -> Option<Vec<String>> {
+        let mut returned_items: Vec<String> = Vec::new();
+
+        if multi_allowed {
+            // Make sure there's an empty line by adding an extra newline at the beginning of this string.
+            print!("\n{}", "Please enter a selection (i.e. `1-3 5`, defaults to `0`): ".bold());
+        } else {
+            print!("\n{}", "Please enter a selection (i.e. `1` or `6`, defaults to `0`): ".bold());
+        }
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+
+        // Pop off the leading newline.
+        input.pop();
+
+        // If no response was given, return the first item in the options.
+        if input.is_empty() {
+            returned_items.push(options.get(0).unwrap().to_string());
+            return Some(returned_items);
+        }
+        
+        let matched_items: Vec<&str> = input.split(' ').collect();
+
+        if !multi_allowed && (matched_items.len() > 1 || matched_items.get(0).unwrap().contains('-')) {
+            message::error("Only one value is allowed to be specified.\n");
+            return None;
+        }
+
+        for item in &matched_items {
+            if !num_re.is_match(item) {
+                message::error(&format!("Error parsing item `{}`. Please make sure it is valid.\n", item));
+                return None;
+            }
+            
+            if item.contains('-') {
+                let (num1_str, num2_str) = item.split_once('-').unwrap();
+                let num1: usize = num1_str.parse().unwrap();
+                let num2: usize = num2_str.parse().unwrap();
+
+                if num1 > options_len - 1 {
+                    message::error(&format!("Number is too big: {}\n", num1));
+                    return None;
+                } else if num2 > options_len - 1 {
+                    message::error(&format!("Number is too big: {}\n", num2));
+                    return None;
+                }
+
+                for num in num1..num2 {
+                    returned_items.push(options.get(num).unwrap().to_string())
+                }
+            } else {
+                let num: usize = item.parse().unwrap();
+
+                if num > options_len -1 {
+                    message::error(&format!("Number is too big: {}\n", num));
+                    return None;
+                }
+                returned_items.push(options.get(num).unwrap().to_string());
+            }
+        }
+
+        Some(returned_items)
+    };
+    
+    let mut result = print_question();
+    while result.is_none() {
+        result = print_question();
+    }
+
+    result.unwrap()
 }

@@ -1,13 +1,17 @@
 use crate::style::Colorize;
 
-pub fn info(str: &str) {
-    println!("{} {}", "Info:".cyan().bold(), str);
+pub fn info(string: &str) {
+    print!("{} {}", "Info:".cyan().bold(), string);
 }
 
-pub fn warning(str: &str) {
-    println!("{} {}", "Warning:".yellow().bold(), str);
+pub fn warning(string: &str) {
+    print!("{} {}", "Warning:".yellow().bold(), string);
 }
 
-pub fn error(str: &str) {
-    println!("{} {}", "Err:".red().bold(), str);
+pub fn error(string: &str) {
+    print!("{} {}", "Err:".red().bold(), string);
+}
+
+pub fn question(string: &str) {
+    print!("{} {}", "Question:".magenta().bold(), string);
 }

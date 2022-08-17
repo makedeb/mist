@@ -18,7 +18,7 @@ pub fn remove(args: &clap::ArgMatches) {
         if let Some(pkg) = cache.get(pkgname) {
             if !pkg.is_installed() {
                 message::warning(&format!(
-                    "Package '{}' isn't installed, so not removing.",
+                    "Package '{}' isn't installed, so not removing.\n",
                     pkg.name(),
                 ));
                 continue;
