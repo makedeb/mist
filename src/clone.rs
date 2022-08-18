@@ -32,12 +32,12 @@ pub fn clone(args: &clap::ArgMatches) {
 
     // Clone the package.
     let pkg_url = format!("{}/{}", mpr_url, pkg);
-    let cmd = util::CommandInfo {
-        args: &vec!["git", "clone", &pkg_url],
-        capture: false,
-        stdin: None,
-    };
-    let exit_code = util::run_command(&cmd).exit_status;
+    let cmd = util::Command::new(
+        vec!["git".to_owned(), "clone".to_owned(), pkg_url],
+        false,
+        None,
+    );
+    let exit_code = cmd.run().exit_status;
 
     if !exit_code.success() {
         message::error("Failed to clone package.\n");

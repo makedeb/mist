@@ -2,7 +2,7 @@ use crate::{apt_util, cache::MprCache, message, style::Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
     io::{self, Write},
-    process::{Command, ExitStatus, Stdio},
+    process::{Command as ProcCommand, ExitStatus, Stdio},
     str,
 };
 
@@ -77,69 +77,79 @@ impl<'a> AuthenticatedRequest<'a> {
 }
 
 // Structs and functions to run a command, and abort if it fails.
-pub struct CommandInfo<'a> {
-    pub args: &'a Vec<&'a str>,
-    pub capture: bool,
-    pub stdin: Option<&'a str>,
-}
-
 pub struct CommandResult {
     pub stdout: Vec<u8>,
     pub stderr: Vec<u8>,
     pub exit_status: ExitStatus,
 }
 
-pub fn run_command(cmd: &CommandInfo) -> CommandResult {
-    let cmd_name = cmd.args[0];
-    let cmd_args = &cmd.args[1..];
-    // Functions like 'Command::stdin()' return references to the object created by
-    // 'Command::new()', which returns the object itself.
-    // We want to only interact with references to the object from hereon out.
-    let mut _result = Command::new(cmd_name);
-    let mut result = &mut _result;
-    result = result.args(cmd_args);
+pub struct Command {
+    args: Vec<String>,
+    capture: bool,
+    stdin: Option<String>
+}
 
-    // If we passed in stdin, set up the command to accept it.
-    if cmd.stdin.is_some() {
-        result = result.stdin(Stdio::piped());
-    }
-
-    // Take in stdout and stderr if needed.
-    if cmd.capture {
-        result = result.stdout(Stdio::piped());
-        result = result.stderr(Stdio::piped());
-    }
-
-    // Start the subprocess.
-    let mut result = match result.spawn() {
-        Ok(child) => child,
-        Err(err) => {
-            message::error(&format!(
-                "Failed to run command. [{:?}] [{}]\n",
-                cmd.args, err
-            ));
-            quit::with_code(exitcode::UNAVAILABLE);
+impl Command {
+    pub fn new(args: Vec<String>, capture: bool, stdin: Option<String>) -> Self {
+        Self {
+            args,
+            capture,
+            stdin,
         }
-    };
-
-    // If we passed in stdin previously, pass in our stdin.
-    if let Some(stdin) = cmd.stdin {
-        result
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(stdin.as_bytes())
-            .unwrap();
     }
 
-    // Wait for the command to exit.
-    let prog_exit = result.wait_with_output().unwrap();
+    pub fn run(&self) -> CommandResult {
+        let cmd_name = self.args.get(0).unwrap().clone();
+        let cmd_args = &self.args[1..];
+        // Functions like 'ProcCommand::stdin()' return references to the object created by
+        // 'ProcCommand::new()', which returns the object itself.
+        // We want to only interact with references to the object from hereon out.
+        let mut _result = ProcCommand::new(cmd_name);
+        let mut result = &mut _result;
+        result = result.args(cmd_args);
 
-    // Return the result.
-    CommandResult {
-        stdout: prog_exit.stdout,
-        stderr: prog_exit.stderr,
-        exit_status: prog_exit.status,
+        // If we passed in stdin, set up the command to accept it.
+        if self.stdin.is_some() {
+            result = result.stdin(Stdio::piped());
+        }
+
+        // Take in stdout and stderr if needed.
+        if self.capture {
+            result = result.stdout(Stdio::piped());
+            result = result.stderr(Stdio::piped());
+        }
+
+        // Start the subprocess.
+        let mut result = match result.spawn() {
+            Ok(child) => child,
+            Err(err) => {
+                message::error(&format!(
+                    "Failed to run command. [{:?}] [{}]\n",
+                    self.args, err
+                ));
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        };
+
+        // If we passed in stdin previously, pass in our stdin.
+        if let Some(stdin) = self.stdin.clone() {
+            result
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(stdin.as_bytes())
+                .unwrap();
+        }
+
+        // Wait for the command to exit.
+        let prog_exit = result.wait_with_output().unwrap();
+
+        // Return the result.
+        CommandResult {
+            stdout: prog_exit.stdout,
+            stderr: prog_exit.stderr,
+            exit_status: prog_exit.status,
+        }
     }
 }
 
