@@ -1,7 +1,9 @@
 use crate::{apt_util, cache::MprCache, message, style::Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
+    fs,
     io::{self, Write},
+    path,
     process::{Command as ProcCommand, ExitStatus, Stdio},
     str,
 };
@@ -83,14 +85,14 @@ pub struct CommandResult {
     pub exit_status: ExitStatus,
 }
 
-pub struct Command {
-    args: Vec<String>,
+pub struct Command<'a> {
+    args: Vec<&'a str>,
     capture: bool,
-    stdin: Option<String>
+    stdin: Option<&'a str>,
 }
 
-impl Command {
-    pub fn new(args: Vec<String>, capture: bool, stdin: Option<String>) -> Self {
+impl<'a> Command<'a> {
+    pub fn new(args: Vec<&'a str>, capture: bool, stdin: Option<&'a str>) -> Self {
         Self {
             args,
             capture,
@@ -151,17 +153,6 @@ impl Command {
             exit_status: prog_exit.status,
         }
     }
-}
-
-/// Function that finds the matching package base of a given package.
-pub fn find_pkgbase<'a>(pkgname: &'a str, package_cache: &'a MprCache) -> Option<&'a str> {
-    for pkg in package_cache.packages() {
-        if pkg.pkgname == pkgname {
-            return Some(pkg.pkgbase.as_str());
-        }
-    }
-
-    None
 }
 
 /// Handle errors from APT.
@@ -234,12 +225,8 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
     let mut str_options: Vec<String> = Vec::new();
 
     for (index, item) in options.iter().enumerate() {
-        str_options.push(format!(
-            "[{}] {}",
-            index,
-            item
-        ))
-    };
+        str_options.push(format!("[{}] {}", index, item))
+    }
 
     format_apt_pkglist(&str_options);
 
@@ -247,10 +234,15 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
         let mut returned_items: Vec<String> = Vec::new();
 
         if multi_allowed {
-            // Make sure there's an empty line by adding an extra newline at the beginning of this string.
-            print!("\n{}", "Please enter a selection (i.e. `1-3 5`, defaults to `0`): ".bold());
+            print!(
+                "{}",
+                "Please enter a selection (i.e. `1-3 5`, defaults to `0`): ".bold()
+            );
         } else {
-            print!("\n{}", "Please enter a selection (i.e. `1` or `6`, defaults to `0`): ".bold());
+            print!(
+                "{}",
+                "Please enter a selection (i.e. `1` or `6`, defaults to `0`): ".bold()
+            );
         }
         io::stdout().flush().unwrap();
         let mut input = String::new();
@@ -264,20 +256,25 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
             returned_items.push(options.get(0).unwrap().to_string());
             return Some(returned_items);
         }
-        
+
         let matched_items: Vec<&str> = input.split(' ').collect();
 
-        if !multi_allowed && (matched_items.len() > 1 || matched_items.get(0).unwrap().contains('-')) {
+        if !multi_allowed
+            && (matched_items.len() > 1 || matched_items.get(0).unwrap().contains('-'))
+        {
             message::error("Only one value is allowed to be specified.\n");
             return None;
         }
 
         for item in &matched_items {
             if !num_re.is_match(item) {
-                message::error(&format!("Error parsing item `{}`. Please make sure it is valid.\n", item));
+                message::error(&format!(
+                    "Error parsing item `{}`. Please make sure it is valid.\n",
+                    item
+                ));
                 return None;
             }
-            
+
             if item.contains('-') {
                 let (num1_str, num2_str) = item.split_once('-').unwrap();
                 let num1: usize = num1_str.parse().unwrap();
@@ -297,7 +294,7 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
             } else {
                 let num: usize = item.parse().unwrap();
 
-                if num > options_len -1 {
+                if num > options_len - 1 {
                     message::error(&format!("Number is too big: {}\n", num));
                     return None;
                 }
@@ -307,11 +304,36 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
 
         Some(returned_items)
     };
-    
+
     let mut result = print_question();
     while result.is_none() {
         result = print_question();
     }
 
     result.unwrap()
+}
+
+/// XDG directory wrapper thingermabobers.
+pub mod xdg {
+    /// Return the cache directory, which also creating it if it doesn't exist.
+    pub fn get_cache_dir() -> super::path::PathBuf {
+        let mut cache_dir = dirs::cache_dir().unwrap();
+        cache_dir.push("mist");
+
+        if !cache_dir.exists() {
+            if super::fs::create_dir_all(&cache_dir).is_err() {
+                super::message::error(&format!(
+                    "Failed to create directory for cache directory ({}).",
+                    cache_dir.display()
+                ));
+            }
+        } else if !cache_dir.is_dir() {
+            super::message::error(&format!(
+                "Config directory path '{}' needs to be a directory, but it isn't.",
+                cache_dir.display()
+            ));
+        }
+
+        cache_dir
+    }
 }

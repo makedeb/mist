@@ -67,11 +67,7 @@ pub fn comment(args: &clap::ArgMatches) {
             // Open the file in the editor.
             message::info(&format!("Opening '{}' in '{}'...\n", &file, editor));
 
-            let cmd = util::Command::new(
-                vec![editor, file.clone()],
-                false,
-                None,
-            );
+            let cmd = util::Command::new(vec![&editor, &file], false, None);
             cmd.run();
 
             // Read the changed file.

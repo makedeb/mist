@@ -43,46 +43,14 @@ pub struct MprCache {
 
 impl MprCache {
     pub fn new(mpr_url: &str) -> MprCache {
-        // Get the XDG cache directory.
-        let cache_dir = match dirs::cache_dir() {
-            Some(dir) => dir,
-            None => {
-                message::error("Unable to find the xdg cache directory.\n");
-                quit::with_code(exitcode::UNAVAILABLE);
-            }
-        };
-
-        // Make sure the directory exists.
-        let mut mpr_cache_dir = cache_dir;
-        mpr_cache_dir.push("mpr-cli");
-
-        if !mpr_cache_dir.exists() {
-            match fs::create_dir_all(mpr_cache_dir.clone()) {
-                Ok(()) => (),
-                Err(err) => {
-                    message::error(&format!(
-                        "Encountered an unknown error while creating the cache directory. [{}]\n",
-                        err
-                    ));
-                    quit::with_code(exitcode::UNAVAILABLE);
-                }
-            }
-        } else if !mpr_cache_dir.is_dir() {
-            message::error(&format!(
-                "Cache path '{}' isn't a directory.\n",
-                mpr_cache_dir.display()
-            ));
-            quit::with_code(exitcode::OSERR);
-        }
-
         // Try reading the cache file. If it doesn't exist or it's older than five minutes, we have to
         // update the cache file.
-        let mut mpr_cache_file = mpr_cache_dir;
-        mpr_cache_file.push("cache.gz");
+        let mut cache_file_path = util::xdg::get_cache_dir();
+        cache_file_path.push("cache.gz");
 
         let mut update_cache = false;
 
-        match fs::metadata(mpr_cache_file.clone()) {
+        match fs::metadata(cache_file_path.clone()) {
             // The file exists. Make sure it's been updated in the last five minutes.
             Ok(metadata) => {
                 let five_minutes = 60 * 5; // The MPR updates package archives every five minutes.
@@ -112,7 +80,7 @@ impl MprCache {
                 } else {
                     update_cache = true;
 
-                    match fs::File::create(mpr_cache_file.clone()) {
+                    match fs::File::create(cache_file_path.clone()) {
                         Ok(_) => (),
                         Err(err) => {
                             message::error(&format!(
@@ -169,7 +137,7 @@ impl MprCache {
                 .unwrap();
             let config_gz = config_compressor.finish().unwrap();
 
-            match fs::write(mpr_cache_file, config_gz) {
+            match fs::write(cache_file_path, config_gz) {
                 Ok(()) => (),
                 Err(err) => {
                     message::error(&format!(
@@ -185,7 +153,7 @@ impl MprCache {
         } else {
             // The cache is less than 5 minutes old. We still need to validate that the cache is valid
             // though.
-            let cache_file = match fs::File::open(mpr_cache_file.clone()) {
+            let cache_file = match fs::File::open(cache_file_path.clone()) {
                 Ok(file) => file,
                 Err(err) => {
                     message::error(&format!(
@@ -201,7 +169,7 @@ impl MprCache {
                 Err(_) => {
                     // On an error, let's just remove the cache file and regenerate it by recalling
                     // this function.
-                    fs::remove_file(mpr_cache_file).unwrap();
+                    fs::remove_file(cache_file_path).unwrap();
                     self::MprCache::new(mpr_url)
                 }
             }
@@ -262,7 +230,7 @@ pub struct Cache {
     /// The underlying APT cache struct.
     apt_cache: AptCache,
     /// The underlying MPR cache struct.
-    //mpr_cache: MprCache,
+    mpr_cache: MprCache,
     /// A combined list of all packages in the cache.
     //pkglist: Vec<CachePackage>,
     /// A map for getting all packages with a certain pkgname. Can be quicker than looping over [`Self::pkglist`].
@@ -323,7 +291,7 @@ impl Cache {
 
         Self {
             apt_cache,
-            //mpr_cache,
+            mpr_cache,
             //pkglist,
             pkgmap,
         }
@@ -335,9 +303,9 @@ impl Cache {
     }
 
     /// Get a reference to the MPR cache passed into this function.
-    /*pub fn mpr_cache(&self) -> &MprCache {
+    pub fn mpr_cache(&self) -> &MprCache {
         &self.mpr_cache
-    }*/
+    }
 
     /// Get a reference to the generated pkglist (contains a combined APT+MPR cache).
     /*pub fn pkglist(&self) -> &Vec<CachePackage> {
@@ -368,6 +336,16 @@ impl Cache {
                 if let CachePackageSource::Mpr = pkg.source {
                     return Some(pkg);
                 }
+            }
+        }
+        None
+    }
+
+    // Find the pkgbase of a given MPR package's pkgname.
+    pub fn find_pkgbase(&self, pkgname: &str) -> Option<String> {
+        for pkg in self.mpr_cache().packages() {
+            if pkg.pkgname == pkgname {
+                return Some(pkg.pkgbase.clone());
             }
         }
         None

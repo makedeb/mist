@@ -2,6 +2,7 @@ mod cache;
 mod clone;
 mod comment;
 mod install;
+mod install_util;
 mod list;
 mod list_comments;
 mod message;

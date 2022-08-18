@@ -8,7 +8,7 @@ pub fn update(_args: &clap::ArgMatches) {
     if let Err(error) = cache.update(&mut progress) {
         for msg in error.what().split(';') {
             if msg.starts_with("E:") {
-                message::error(&format!("{}\n",msg.strip_prefix("E:").unwrap()));
+                message::error(&format!("{}\n", msg.strip_prefix("E:").unwrap()));
             } else if msg.starts_with("W:") {
                 message::warning(&format!("{}\n", msg.strip_prefix("W:").unwrap()));
             };

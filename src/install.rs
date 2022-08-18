@@ -1,4 +1,7 @@
-use crate::{cache::{Cache, MprCache}, util, message};
+use crate::{
+    cache::{Cache, MprCache},
+    install_util, message, util, style::Colorize
+};
 use rust_apt::cache::Cache as AptCache;
 use std::path::Path;
 
@@ -11,13 +14,30 @@ pub fn install(args: &clap::ArgMatches) {
     let mut apt_pkgs: Vec<&str> = Vec::new();
     let mut mpr_pkgs: Vec<&str> = Vec::new();
 
+    // Check real quick for any packages that cannot be found. We don't want to ask the user anything else if there's packages that cannot be found, instead we should just show those packages and abort.
+    let mut unfindable = false;
+
+    for pkg in &pkglist {
+        if cache.get_apt_pkg(pkg).is_none() && cache.get_mpr_pkg(pkg).is_none() {
+            message::error(&format!(
+                "Unable to find package '{}'.\n",
+                pkg.green().bold()
+            ));
+            unfindable = true;
+        }
+    }
+
+    if unfindable {
+        quit::with_code(exitcode::USAGE);
+    }
+
     for pkg in pkglist {
         let apt_pkg = cache.get_apt_pkg(pkg);
         let mpr_pkg = cache.get_mpr_pkg(pkg);
 
         if apt_pkg.is_some() && mpr_pkg.is_some() {
             let resp = util::ask_question(
-                &format!("Package '{}' is available from multiple sources. Please select one to install:\n", pkg),
+                &format!("Package '{}' is available from multiple sources. Please select one to install:\n", pkg.green().bold()),
                 &vec!["APT", "MPR"],
                 false
             ).remove(0);
@@ -28,60 +48,28 @@ pub fn install(args: &clap::ArgMatches) {
             } else {
                 mpr_pkgs.push(pkg);
             }
+        } else if apt_pkg.is_some() {
+            apt_pkgs.push(pkg);
+        } else if mpr_pkg.is_some() {
+            mpr_pkgs.push(pkg);
         }
     }
 
     // Clone MPR packages.
-    let git_dir = dirs::cache_dir().unwrap().into_os_string().into_string().unwrap() + "/git-mpr";
+    install_util::clone_mpr_pkgs(&mpr_pkgs, mpr_url);
 
-    for pkg in &mpr_pkgs {
-        let repo_path_str = git_dir.clone() + "/" + pkg;
-        let repo_path = Path::new(&repo_path_str);
+    // Mark any APT packages for installation.
+    for pkg in apt_pkgs {
+        let apt_pkg = cache.apt_cache().get(pkg).unwrap();
 
-        if !repo_path.exists() {
-            message::info(&format!(
-                "Cloning '{}' from the MPR...\n",
-                pkg
-            ));
-
-            let cmd = util::Command::new(
-                vec![
-                    "git".to_owned(),
-                    "clone".to_owned(),
-                    format!("{}/{}", mpr_url, pkg),
-                    repo_path_str
-                ],
-                false,
-                None
-            );
-
-            if !cmd.run().exit_status.success() {
-                message::error("Failed to clone package from the MPR.\n");
-                quit::with_code(exitcode::UNAVAILABLE);
-            }
-            println!();
-        } else if !repo_path.is_dir() {
+        if !apt_pkg.mark_install(false, true) {
             message::error(&format!(
-                "Repository path '{}' isn't a directory.\n",
-                repo_path.display()
+                "There was an issue marking '{}' for installation.\n",
+                pkg.green().bold()
             ));
             quit::with_code(exitcode::UNAVAILABLE);
-        } else {
-            message::info(&format!(
-                "Updating Git repository for '{}'...\n",
-                pkg
-            ));
-
-            let cmd = util::Command::new(
-                vec!["git".to_owned(), "pull".to_owned(), pkg.to_string()],
-                false,
-                None
-            );
-
-            if !cmd.run().exit_status.success() {
-                message::error("Failed to update Git repository.\n");
-                quit::with_code(exitcode::UNAVAILABLE);
-            }
         }
     }
+
+    todo!("Need to get package ordering for MPR packages, and I think we'll be good for installation functionality.");
 }
