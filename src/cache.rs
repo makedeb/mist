@@ -17,6 +17,16 @@ use std::{collections::HashMap, fs, io, time::SystemTime};
 ///////////////////////////
 // Stuff for MPR caches. //
 ///////////////////////////
+#[derive(Deserialize, Serialize, PartialEq, Eq)]
+pub struct MprDependencyGroup {
+    #[serde(rename = "Distro")]
+    distro: Option<String>,
+    #[serde(rename = "Arch")]
+    arch: Option<String>,
+    #[serde(rename = "Packages")]
+    packages: Vec<String>,
+}
+
 #[derive(Deserialize, Serialize, PartialEq)]
 pub struct MprPackage {
     #[serde(rename = "Name")]
@@ -35,14 +45,78 @@ pub struct MprPackage {
     pub popularity: f32,
     #[serde(rename = "OutOfDate")]
     pub ood: Option<u32>,
+    #[serde(rename = "Depends")]
+    pub depends: Vec<MprDependencyGroup>,
+    #[serde(rename = "MakeDepends")]
+    pub makedepends: Vec<MprDependencyGroup>,
+    #[serde(rename = "CheckDepends")]
+    pub checkdepends: Vec<MprDependencyGroup>,
+    #[serde(rename = "Conflicts")]
+    pub conflicts: Vec<MprDependencyGroup>,
+}
+
+impl MprPackage {
+    fn get_pkg_group(
+        &self,
+        distro: Option<&str>,
+        arch: Option<&str>,
+        dep_groups: &Vec<MprDependencyGroup>,
+    ) -> Option<Vec<String>> {
+        let distro = distro.map(|distro| distro.to_owned());
+        let arch = arch.map(|arch| arch.to_owned());
+
+        for dep_group in dep_groups {
+            if dep_group.distro == distro && dep_group.arch == arch {
+                return Some(dep_group.packages.clone());
+            }
+        }
+
+        None
+    }
+
+    /// Get a list of depends packages for a specific distro/arch pair.
+    pub fn get_depends(&self, distro: Option<&str>, arch: Option<&str>) -> Option<Vec<String>> {
+        self.get_pkg_group(distro, arch, &self.depends)
+    }
+
+    /// Get a list of makedepends packages for a specific distro/arch pair.
+    pub fn get_makedepends(&self, distro: Option<&str>, arch: Option<&str>) -> Option<Vec<String>> {
+        self.get_pkg_group(distro, arch, &self.makedepends)
+    }
+
+    /// Get a list of checkdepends packages for a specific distro/arch pair.
+    pub fn get_checkdepends(
+        &self,
+        distro: Option<&str>,
+        arch: Option<&str>,
+    ) -> Option<Vec<String>> {
+        self.get_pkg_group(distro, arch, &self.checkdepends)
+    }
+
+    /// Get a list of conflicts packages for a specific distro/arch pair.
+    pub fn get_conflicts(&self, distro: Option<&str>, arch: Option<&str>) -> Option<Vec<String>> {
+        self.get_pkg_group(distro, arch, &self.conflicts)
+    }
 }
 
 pub struct MprCache {
-    packages: Vec<MprPackage>,
+    packages: HashMap<String, MprPackage>,
 }
 
 impl MprCache {
-    pub fn new(mpr_url: &str) -> MprCache {
+    // Convert a Vector of MPR packages (the way they're stored on the MPR itself) into a HashMap that's accessible via key-value pairs.
+    fn vec_to_map(packages: Vec<MprPackage>) -> HashMap<String, MprPackage> {
+        let mut map = HashMap::new();
+
+        for pkg in packages {
+            let pkgname = pkg.pkgname.clone();
+            map.insert(pkgname, pkg);
+        }
+
+        map
+    }
+
+    pub fn new(mpr_url: &str) -> Self {
         // Try reading the cache file. If it doesn't exist or it's older than five minutes, we have to
         // update the cache file.
         let mut cache_file_path = util::xdg::get_cache_dir();
@@ -149,7 +223,9 @@ impl MprCache {
             }
 
             // Return the new cache object.
-            MprCache { packages: cache }
+            Self {
+                packages: Self::vec_to_map(cache),
+            }
         } else {
             // The cache is less than 5 minutes old. We still need to validate that the cache is valid
             // though.
@@ -165,18 +241,20 @@ impl MprCache {
             };
 
             match valid_archive(cache_file) {
-                Ok(file) => MprCache { packages: file },
+                Ok(file) => Self {
+                    packages: Self::vec_to_map(file),
+                },
                 Err(_) => {
                     // On an error, let's just remove the cache file and regenerate it by recalling
                     // this function.
                     fs::remove_file(cache_file_path).unwrap();
-                    self::MprCache::new(mpr_url)
+                    Self::new(mpr_url)
                 }
             }
         }
     }
 
-    pub fn packages(&self) -> &Vec<MprPackage> {
+    pub fn packages(&self) -> &HashMap<String, MprPackage> {
         &self.packages
     }
 }
@@ -260,7 +338,7 @@ impl Cache {
             });
         }
 
-        for pkg in mpr_cache.packages() {
+        for pkg in mpr_cache.packages().values() {
             pkglist.push(CachePackage {
                 pkgname: pkg.pkgname.clone(),
                 pkgbase: Some(pkg.pkgbase.clone()),
@@ -318,8 +396,8 @@ impl Cache {
     }
 
     // Get the APT variant of a package.
-    pub fn get_apt_pkg(&self, pkgname: &String) -> Option<&CachePackage> {
-        if let Some(pkglist) = self.pkgmap().get(pkgname) {
+    pub fn get_apt_pkg(&self, pkgname: &str) -> Option<&CachePackage> {
+        if let Some(pkglist) = self.pkgmap().get(&pkgname.to_owned()) {
             for pkg in pkglist {
                 if let CachePackageSource::Apt = pkg.source {
                     return Some(pkg);
@@ -330,8 +408,8 @@ impl Cache {
     }
 
     // Get the MPR variant of a package.
-    pub fn get_mpr_pkg(&self, pkgname: &String) -> Option<&CachePackage> {
-        if let Some(pkglist) = self.pkgmap().get(pkgname) {
+    pub fn get_mpr_pkg(&self, pkgname: &str) -> Option<&CachePackage> {
+        if let Some(pkglist) = self.pkgmap().get(&pkgname.to_owned()) {
             for pkg in pkglist {
                 if let CachePackageSource::Mpr = pkg.source {
                     return Some(pkg);
@@ -343,7 +421,7 @@ impl Cache {
 
     // Find the pkgbase of a given MPR package's pkgname.
     pub fn find_pkgbase(&self, pkgname: &str) -> Option<String> {
-        for pkg in self.mpr_cache().packages() {
+        for pkg in self.mpr_cache().packages().values() {
             if pkg.pkgname == pkgname {
                 return Some(pkg.pkgbase.clone());
             }

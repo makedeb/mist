@@ -20,7 +20,7 @@ pub fn list_comments(args: &clap::ArgMatches) {
     let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of packages.
-    for pkg in mpr_cache.packages() {
+    for pkg in mpr_cache.packages().values() {
         pkgbases.push(&pkg.pkgbase);
     }
 

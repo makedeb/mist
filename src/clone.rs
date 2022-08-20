@@ -11,7 +11,7 @@ pub fn clone(args: &clap::ArgMatches) {
     let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of package bases.
-    for pkg in cache.mpr_cache().packages() {
+    for pkg in cache.mpr_cache().packages().values() {
         pkgbases.push(&pkg.pkgbase);
     }
 

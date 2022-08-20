@@ -18,7 +18,7 @@ pub fn quick_list(args: &clap::ArgMatches) {
     }
 
     if !apt_only {
-        for pkg in MprCache::new(mpr_url).packages() {
+        for pkg in MprCache::new(mpr_url).packages().values() {
             let pkgname = &pkg.pkgname;
 
             if pkgname.starts_with(prefix) {

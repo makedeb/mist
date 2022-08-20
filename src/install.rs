@@ -1,9 +1,10 @@
 use crate::{
     cache::{Cache, MprCache},
-    install_util, message, util, style::Colorize
+    install_util, message,
+    style::Colorize,
+    util,
 };
 use rust_apt::cache::Cache as AptCache;
-use std::path::Path;
 
 pub fn install(args: &clap::ArgMatches) {
     let pkglist: Vec<&String> = args.get_many("pkg").unwrap().collect();
@@ -55,9 +56,6 @@ pub fn install(args: &clap::ArgMatches) {
         }
     }
 
-    // Clone MPR packages.
-    install_util::clone_mpr_pkgs(&mpr_pkgs, mpr_url);
-
     // Mark any APT packages for installation.
     for pkg in apt_pkgs {
         let apt_pkg = cache.apt_cache().get(pkg).unwrap();
@@ -71,5 +69,6 @@ pub fn install(args: &clap::ArgMatches) {
         }
     }
 
-    todo!("Need to get package ordering for MPR packages, and I think we'll be good for installation functionality.");
+    // Get the ordering for MPR package installation.
+    let mpr_install_order = install_util::order_mpr_packages(&cache, &mpr_pkgs);
 }

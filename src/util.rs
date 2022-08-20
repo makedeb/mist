@@ -1,4 +1,4 @@
-use crate::{apt_util, cache::MprCache, message, style::Colorize};
+use crate::{apt_util, message, style::Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -7,6 +7,8 @@ use std::{
     process::{Command as ProcCommand, ExitStatus, Stdio},
     str,
 };
+
+use core::cmp::Ordering;
 
 use core::fmt::Display;
 use regex::Regex;
@@ -101,7 +103,7 @@ impl<'a> Command<'a> {
     }
 
     pub fn run(&self) -> CommandResult {
-        let cmd_name = self.args.get(0).unwrap().clone();
+        let cmd_name = self.args.first().unwrap();
         let cmd_args = &self.args[1..];
         // Functions like 'ProcCommand::stdin()' return references to the object created by
         // 'ProcCommand::new()', which returns the object itself.
@@ -134,7 +136,7 @@ impl<'a> Command<'a> {
         };
 
         // If we passed in stdin previously, pass in our stdin.
-        if let Some(stdin) = self.stdin.clone() {
+        if let Some(stdin) = self.stdin {
             result
                 .stdin
                 .take()
@@ -253,14 +255,14 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
 
         // If no response was given, return the first item in the options.
         if input.is_empty() {
-            returned_items.push(options.get(0).unwrap().to_string());
+            returned_items.push(options.first().unwrap().to_string());
             return Some(returned_items);
         }
 
         let matched_items: Vec<&str> = input.split(' ').collect();
 
         if !multi_allowed
-            && (matched_items.len() > 1 || matched_items.get(0).unwrap().contains('-'))
+            && (matched_items.len() > 1 || matched_items.first().unwrap().contains('-'))
         {
             message::error("Only one value is allowed to be specified.\n");
             return None;
@@ -311,6 +313,31 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
     }
 
     result.unwrap()
+}
+
+/// Get the system's distro and architecture. The first value returned is the distribution, and the second is the architecture.
+pub fn get_distro_arch_info() -> (String, String) {
+    let distro_cmd = Command::new(vec!["lsb_release", "-cs"], true, None).run();
+    let arch_cmd = Command::new(vec!["dpkg", "--print-architecture"], true, None).run();
+
+    let distro = std::str::from_utf8(&distro_cmd.stdout).unwrap().to_owned();
+    let arch = std::str::from_utf8(&arch_cmd.stdout).unwrap().to_owned();
+
+    (distro, arch)
+}
+
+/// Check if a version matches requirements.
+pub fn check_version_requirement(ver1: &str, operator: &str, ver2: &str) -> bool {
+    let ver_result = apt_util::cmp_versions(ver1, ver2);
+
+    match operator {
+        "<<" => ver_result == Ordering::Less,
+        "<=" => vec![Ordering::Less, Ordering::Equal].contains(&ver_result),
+        "=" => ver_result == Ordering::Equal,
+        ">=" => vec![Ordering::Equal, Ordering::Greater].contains(&ver_result),
+        ">>" => ver_result == Ordering::Greater,
+        _ => panic!("Invalid operator '{}' passed in.", operator),
+    }
 }
 
 /// XDG directory wrapper thingermabobers.
