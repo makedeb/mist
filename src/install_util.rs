@@ -131,7 +131,7 @@ fn resolve_mpr_package(
     // If we've gone over the recursion limit, error out.
     if current_recursion > recursion_limit {
         message::error(&format!(
-            "Went over the recursion limit ({}) while resolving MPR dependencies. Try increasing it via the 'APT::pkgPackageManager::MaxLoopCount' config option.",
+            "Went over the recursion limit ({}) while resolving MPR dependencies. Try increasing it via the 'APT::pkgPackageManager::MaxLoopCount' config option.\n",
             recursion_limit
         ));
         quit::with_code(exitcode::SOFTWARE);
@@ -155,7 +155,6 @@ fn resolve_mpr_package(
         MprPackage::get_depends,
         MprPackage::get_makedepends,
         MprPackage::get_checkdepends,
-        MprPackage::get_conflicts,
     ] {
         if let Some(mut deps) = dep_func(mpr_pkg, Some(&system_distro), Some(&system_arch)) {
             dep_groups.append(&mut deps);
@@ -189,8 +188,8 @@ fn resolve_mpr_package(
             let dep = SplitPackage::new(dep_str);
 
             // Find a version of a package that satisfies our requirements.
-            let cache_apt_pkg = cache.get_apt_pkg(dep_str);
-            let mpr_pkg = cache.mpr_cache().packages().get(dep_str);
+            let cache_apt_pkg = cache.get_apt_pkg(&dep.pkgname);
+            let mpr_pkg = cache.mpr_cache().packages().get(&dep.pkgname);
 
             // We want to prefer the APT package for any dependencies, so test that first.
             if let Some(pkg) = cache_apt_pkg {
@@ -214,6 +213,7 @@ fn resolve_mpr_package(
                         break;
                     } else if apt_pkg.marked_keep() {
                         apt_pkg.mark_install(true, false).then_some(()).unwrap();
+                        apt_pkg.protect();
                         good_dep_found = true;
                         break;
                     }
@@ -258,7 +258,7 @@ fn resolve_mpr_package(
 
 /// Order marked MPR packages for installation.
 /// This function assumes all packages in `pkglist` actually exist.
-pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<Vec<String>> {
+pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<String> {
     // The list of MPR packages that we need to install.
     let mut mpr_pkglist = Vec::new();
 
@@ -266,10 +266,14 @@ pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<Vec<String>
     let recursion_limit = Config::new().int("APT::pkgPackageManager::MaxLoopCount", 50);
 
     for pkg in pkglist {
+        // Append the package itself.
+        mpr_pkglist.push(pkg.to_string());
+
+        // Append its dependencies.
         mpr_pkglist.append(&mut resolve_mpr_package(cache, pkg, 1, recursion_limit));
     }
 
     // TODO: This list needs ordered before returning it so that MPR packages are installed in the correct way.
-    todo!("ORDER THIS LIST BRO!");
-    vec![mpr_pkglist]
+    message::warning("PLEASE ORDER BEFORE MERGE {:?} THX!\n");
+    mpr_pkglist
 }

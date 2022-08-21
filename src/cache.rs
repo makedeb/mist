@@ -385,6 +385,170 @@ impl Cache {
         &self.mpr_cache
     }
 
+    /// Run a transaction.
+    /// `mpr_pkgs` is the list of MPR packages to install.
+    pub fn commit(&self, mpr_pkgs: &Vec<String>) {
+        let mut to_install: Vec<String> = Vec::new();
+        let mut to_remove: Vec<String> = Vec::new();
+        let mut to_purge: Vec<String> = Vec::new();
+        let mut to_upgrade: Vec<String> = Vec::new();
+        let mut to_downgrade: Vec<String> = Vec::new();
+
+        // Report APT packages.
+        for pkg in self.apt_cache().packages(&PackageSort::default()) {
+            let pkgname = pkg.name();
+            let apt_string = format!("{}{}", "apt/".to_string().green(), &pkgname);
+
+            if pkg.marked_install() {
+                to_install.push(apt_string);
+            } else if pkg.marked_delete() {
+                to_remove.push(apt_string);
+            } else if pkg.marked_purge() {
+                to_purge.push(apt_string);
+            } else if pkg.marked_upgrade() {
+                to_upgrade.push(apt_string);
+            } else if pkg.marked_downgrade() {
+                to_downgrade.push(apt_string);
+            }
+        }
+
+        // Report MPR packages.
+        for pkg in mpr_pkgs {
+            let mpr_string = format!("{}{}", "mpr/".to_owned().green(), pkg);
+            to_install.push(mpr_string);
+        }
+
+        // Print out the transaction.
+        if to_install.is_empty()
+            && to_remove.is_empty()
+            && to_purge.is_empty()
+            && to_upgrade.is_empty()
+            && to_downgrade.is_empty()
+        {
+            println!("{}", "Nothing to do, quitting.".bold());
+            quit::with_code(exitcode::OK);
+        };
+
+        if !to_install.is_empty() {
+            println!("{}", "The following packages will be installed:".bold());
+            util::format_apt_pkglist(&to_install);
+            println!();
+        }
+
+        if !to_remove.is_empty() {
+            println!(
+                "{}",
+                format!("The following packages will be {}:", "removed".red()).bold()
+            );
+            util::format_apt_pkglist(&to_remove);
+            println!();
+        }
+
+        if !to_purge.is_empty() {
+            println!(
+                "{}",
+                format!("The following packages (along with their configuration files) will be {}:", "removed".red()).bold()
+            );
+            util::format_apt_pkglist(&to_purge);
+            println!();
+        }
+
+        if !to_upgrade.is_empty() {
+            println!("{}", "The following packages will be upgraded:".bold());
+            util::format_apt_pkglist(&to_upgrade);
+            println!();
+        }
+
+        if !to_downgrade.is_empty() {
+            println!("{}", "The following packages will be downgraded:".bold());
+            util::format_apt_pkglist(&to_downgrade);
+            println!();
+        }
+
+        let (to_install_string, to_install_count) = {
+            let count = to_install.len();
+            let string = match count {
+                0 => "install".green(),
+                _ => "install".magenta(),
+            };
+            (string, count)
+        };
+        let (to_remove_string, to_remove_count) = {
+            let count = to_remove.len();
+            let string = match count {
+                0 => "remove".green(),
+                _ => "remove".magenta(),
+            };
+            (string, count)
+        };
+        let (to_upgrade_string, to_upgrade_count) = {
+            let count = to_upgrade.len();
+            let string = match count {
+                0 => "upgrade".green(),
+                _ => "upgrade".magenta(),
+            };
+            (string, count)
+        };
+        let (to_downgrade_string, to_downgrade_count) = {
+            let count = to_downgrade.len();
+            let string = match count {
+                0 => "downgrade".green(),
+                _ => "downgrade".magenta(),
+            };
+            (string, count)
+        };
+
+        println!("{}", "Review:".bold());
+
+        println!(
+            "{}",
+            format!("- {} to {}", to_install_count, to_install_string).bold()
+        );
+        println!(
+            "{}",
+            format!("- {} to {}", to_remove_count, to_remove_string).bold()
+        );
+        println!(
+            "{}",
+            format!("- {} to {}", to_upgrade_count, to_upgrade_string).bold()
+        );
+        println!(
+            "{}",
+            format!("- {} to {}", to_downgrade_count, to_downgrade_string).bold()
+        );
+
+        print!("{}", "\nWould you like to continue? [Y/n] ".bold());
+        io::stdout().flush().unwrap();
+
+        let mut resp = String::new();
+        io::stdin().read_line(&mut resp).unwrap();
+        resp.pop();
+
+        if !util::is_yes(&resp, true) {
+            println!("{}", "Aborting...".bold());
+            quit::with_code(exitcode::OK);
+        }
+
+        let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
+        if self.apt_cache().get_archives(&mut updater).is_err() {
+            message::error("Failed to fetch needed archives\n");
+            quit::with_code(exitcode::UNAVAILABLE);
+        }
+
+        let mut installer: Box<dyn InstallProgress> = Box::new(MistInstallProgress {});
+        match self.apt_cache().do_install(&mut installer) {
+            OrderResult::Completed => (),
+            OrderResult::Incomplete => {
+                message::error("`cache.do_install()` returned `OrderResult::Incomplete`, which Mist doesn't know how to handle. Please report this as an issue.\n");
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+            OrderResult::Failed => {
+                message::error("There was an issue running the transaction.\n");
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        }
+    }
+
     /// Get a reference to the generated pkglist (contains a combined APT+MPR cache).
     /*pub fn pkglist(&self) -> &Vec<CachePackage> {
         &self.pkglist

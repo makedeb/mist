@@ -138,17 +138,10 @@ impl InstallProgress for MistInstallProgress {
                 percent,
                 (term_width - PROGRESS_STR_LEN).try_into().unwrap()
             )
-            // `Colorize` annoyingly isn't working under replace via `"#".magenta()`, so manually use the escape codes here.
-            .replace('#', "\x1b[35m#\x1b[0m")
             .bold()
         );
         io::stdout().flush().unwrap();
 
-        // If this is the last change, remove the progress reporting bar.
-        // if steps_done == total_steps {
-        // print!("{}", " ".repeat(term_width));
-        // print!("\x1b[0;{}r", term_height);
-        // }
         // Finally, go back to the previous cursor position.
         print!("\x1b8");
         io::stdout().flush().unwrap();

@@ -196,21 +196,6 @@ pub fn is_yes(resp: &str, default: bool) -> bool {
     resp.to_lowercase() == "y" || (resp.is_empty() && default)
 }
 
-/// Run a function with the lockfile locked, and abort if there's an error.
-pub fn with_lock<F: Fn()>(func: F) {
-    if let Err(err) = apt_util::apt_lock() {
-        handle_errors(&err);
-        quit::with_code(exitcode::UNAVAILABLE);
-    }
-
-    func();
-
-    if let Err(err) = apt_util::apt_unlock() {
-        handle_errors(&err);
-        quit::with_code(exitcode::UNAVAILABLE);
-    }
-}
-
 /// Print out a question with options and get the result.
 /// `multi_allowed` specifies if only a single option can be chosen.
 pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) -> Vec<String> {

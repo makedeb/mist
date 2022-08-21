@@ -1,4 +1,4 @@
-use crate::{cache::run_transaction, message, util};
+use crate::{apt_util, cache::run_transaction, message, util};
 use rust_apt::cache::{Cache as AptCache, PackageSort};
 
 pub fn remove(args: &clap::ArgMatches) {
@@ -12,6 +12,12 @@ pub fn remove(args: &clap::ArgMatches) {
     };
     let purge = args.is_present("purge");
     let autoremove = args.is_present("autoremove");
+
+    // Lock the cache.
+    if let Err(err) = apt_util::apt_lock() {
+        util::handle_errors(&err);
+        quit::with_code(exitcode::UNAVAILABLE);
+    }
 
     // Remove the user requested packages.
     for pkgname in pkglist {
@@ -40,6 +46,12 @@ pub fn remove(args: &clap::ArgMatches) {
     }
 
     if let Err(err) = cache.resolve(true) {
+        util::handle_errors(&err);
+        quit::with_code(exitcode::UNAVAILABLE);
+    }
+
+    // Unlock the cache so our transaction can complete.
+    if let Err(err) = apt_util::apt_unlock() {
         util::handle_errors(&err);
         quit::with_code(exitcode::UNAVAILABLE);
     }

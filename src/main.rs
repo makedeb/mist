@@ -209,7 +209,7 @@ fn main() {
         Some(("list", args)) => list::list(args),
         Some(("list-comments", args)) => list_comments::list_comments(args),
         Some(("quick-list", args)) => quick_list::quick_list(args),
-        Some(("remove", args)) => util::with_lock(|| remove::remove(args)),
+        Some(("remove", args)) => remove::remove(args),
         Some(("search", args)) => search::search(args),
         Some(("update", args)) => update::update(args),
         Some(("whoami", args)) => whoami::whoami(args),

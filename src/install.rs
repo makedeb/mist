@@ -32,7 +32,7 @@ pub fn install(args: &clap::ArgMatches) {
         quit::with_code(exitcode::USAGE);
     }
 
-    for pkg in pkglist {
+    for pkg in &pkglist {
         let apt_pkg = cache.get_apt_pkg(pkg);
         let mpr_pkg = cache.get_mpr_pkg(pkg);
 
@@ -71,4 +71,12 @@ pub fn install(args: &clap::ArgMatches) {
 
     // Get the ordering for MPR package installation.
     let mpr_install_order = install_util::order_mpr_packages(&cache, &mpr_pkgs);
+
+    // Make sure any new marked APT packages are resolved properly.
+    if let Err(err) = cache.apt_cache().resolve(true) {
+        util::handle_errors(&err);
+        quit::with_code(exitcode::UNAVAILABLE);
+    }
+
+    cache.commit(&mpr_install_order);
 }
