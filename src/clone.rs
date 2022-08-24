@@ -22,8 +22,8 @@ pub fn clone(args: &clap::ArgMatches) {
             pkg
         ));
 
-        // If there's a pkgbase that builds this package, guide the user to clone that package
-        // instead.
+        // If there's a pkgbase that builds this package, guide the user to clone that
+        // package instead.
         if let Some(pkgbase) = cache.find_pkgbase(pkg) {
             message::error(&format!(
                 "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:\n",

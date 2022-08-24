@@ -92,7 +92,8 @@ pub fn generate_pkginfo_entry(
         pkgdesc = apt_pkg_unwrapped.pkgdesc.clone();
     }
 
-    // Add the first line and description, at long last. This string is the one we'll return at the end of the function.
+    // Add the first line and description, at long last. This string is the one
+    // we'll return at the end of the function.
     write!(return_string, "/{} {}", pkgver, src_str).unwrap();
 
     if let Some(unwrapped_pkgdesc) = pkgdesc {

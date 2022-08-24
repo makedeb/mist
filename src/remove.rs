@@ -1,8 +1,11 @@
-use crate::{apt_util, cache::run_transaction, message, util};
+use crate::{
+    apt_util,
+    cache::{Cache, MprCache},
+    message, util,
+};
 use rust_apt::cache::{Cache as AptCache, PackageSort};
 
 pub fn remove(args: &clap::ArgMatches) {
-    let cache = AptCache::new();
     let pkglist: Vec<&String> = {
         if let Some(pkglist) = args.get_many("pkg") {
             pkglist.collect()
@@ -12,6 +15,8 @@ pub fn remove(args: &clap::ArgMatches) {
     };
     let purge = args.is_present("purge");
     let autoremove = args.is_present("autoremove");
+    let mpr_url: &String = args.get_one("mpr-url").unwrap();
+    let cache = Cache::new(AptCache::new(), MprCache::new(mpr_url));
 
     // Lock the cache.
     if let Err(err) = apt_util::apt_lock() {
@@ -21,7 +26,7 @@ pub fn remove(args: &clap::ArgMatches) {
 
     // Remove the user requested packages.
     for pkgname in pkglist {
-        if let Some(pkg) = cache.get(pkgname) {
+        if let Some(pkg) = cache.apt_cache().get(pkgname) {
             if !pkg.is_installed() {
                 message::warning(&format!(
                     "Package '{}' isn't installed, so not removing.\n",
@@ -37,7 +42,7 @@ pub fn remove(args: &clap::ArgMatches) {
 
     // Remove any packages that are no longer needed.
     if autoremove {
-        for pkg in cache.packages(&PackageSort::default()) {
+        for pkg in cache.apt_cache().packages(&PackageSort::default()) {
             if pkg.is_auto_removable() {
                 pkg.mark_delete(purge).then_some(()).unwrap();
                 pkg.protect();
@@ -45,16 +50,14 @@ pub fn remove(args: &clap::ArgMatches) {
         }
     }
 
-    if let Err(err) = cache.resolve(true) {
+    if let Err(err) = cache.apt_cache().resolve(true) {
         util::handle_errors(&err);
         quit::with_code(exitcode::UNAVAILABLE);
     }
 
     // Unlock the cache so our transaction can complete.
-    if let Err(err) = apt_util::apt_unlock() {
-        util::handle_errors(&err);
-        quit::with_code(exitcode::UNAVAILABLE);
-    }
+    apt_util::apt_unlock();
 
-    run_transaction(&cache, purge);
+    // Commit our changes.
+    cache.commit(&Vec::new());
 }

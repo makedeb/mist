@@ -2,7 +2,7 @@
 pkgname=mist
 pkgver=0.8.0
 pkgrel=1
-pkgdesc='The official helper for the makedeb Package Repository'
+pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')
 depends=(
     'libapt-pkg-dev'

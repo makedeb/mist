@@ -7,7 +7,6 @@ use crate::{
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use rust_apt::{
     cache::{Cache as AptCache, PackageSort},
-    pkgmanager::OrderResult,
     progress::{AcquireProgress, InstallProgress},
 };
 use serde::{Deserialize, Serialize};
@@ -104,7 +103,8 @@ pub struct MprCache {
 }
 
 impl MprCache {
-    // Convert a Vector of MPR packages (the way they're stored on the MPR itself) into a HashMap that's accessible via key-value pairs.
+    // Convert a Vector of MPR packages (the way they're stored on the MPR itself)
+    // into a HashMap that's accessible via key-value pairs.
     fn vec_to_map(packages: Vec<MprPackage>) -> HashMap<String, MprPackage> {
         let mut map = HashMap::new();
 
@@ -117,8 +117,8 @@ impl MprCache {
     }
 
     pub fn new(mpr_url: &str) -> Self {
-        // Try reading the cache file. If it doesn't exist or it's older than five minutes, we have to
-        // update the cache file.
+        // Try reading the cache file. If it doesn't exist or it's older than five
+        // minutes, we have to update the cache file.
         let mut cache_file_path = util::xdg::get_cache_dir();
         cache_file_path.push("cache.gz");
 
@@ -204,7 +204,8 @@ impl MprCache {
                 }
             };
 
-            // Now that the JSON has been verified, let's write out the archive to the cache file.
+            // Now that the JSON has been verified, let's write out the archive to the cache
+            // file.
             let mut config_compressor = GzEncoder::new(Vec::new(), Compression::default());
             config_compressor
                 .write_all(serde_json::to_string(&cache).unwrap().as_bytes())
@@ -227,8 +228,8 @@ impl MprCache {
                 packages: Self::vec_to_map(cache),
             }
         } else {
-            // The cache is less than 5 minutes old. We still need to validate that the cache is valid
-            // though.
+            // The cache is less than 5 minutes old. We still need to validate that the
+            // cache is valid though.
             let cache_file = match fs::File::open(cache_file_path.clone()) {
                 Ok(file) => file,
                 Err(err) => {
@@ -281,8 +282,9 @@ fn valid_archive(file: impl Read) -> Result<Vec<MprPackage>, u32> {
 // Stuff to handled shared APT/MPR caches. //
 /////////////////////////////////////////////
 //
-// Some of these fields only make sense to one type of package, but this kind of cache allows us to
-// combine both types when needed, such as when providing search results.
+// Some of these fields only make sense to one type of package, but this kind of
+// cache allows us to combine both types when needed, such as when providing
+// search results.
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum CachePackageSource {
@@ -311,7 +313,8 @@ pub struct Cache {
     mpr_cache: MprCache,
     /// A combined list of all packages in the cache.
     //pkglist: Vec<CachePackage>,
-    /// A map for getting all packages with a certain pkgname. Can be quicker than looping over [`Self::pkglist`].
+    /// A map for getting all packages with a certain pkgname. Can be quicker
+    /// than looping over [`Self::pkglist`].
     pkgmap: HashMap<String, Vec<CachePackage>>,
 }
 
@@ -447,7 +450,11 @@ impl Cache {
         if !to_purge.is_empty() {
             println!(
                 "{}",
-                format!("The following packages (along with their configuration files) will be {}:", "removed".red()).bold()
+                format!(
+                    "The following packages (along with their configuration files) will be {}:",
+                    "removed".red()
+                )
+                .bold()
             );
             util::format_apt_pkglist(&to_purge);
             println!();
@@ -536,25 +543,21 @@ impl Cache {
         }
 
         let mut installer: Box<dyn InstallProgress> = Box::new(MistInstallProgress {});
-        match self.apt_cache().do_install(&mut installer) {
-            OrderResult::Completed => (),
-            OrderResult::Incomplete => {
-                message::error("`cache.do_install()` returned `OrderResult::Incomplete`, which Mist doesn't know how to handle. Please report this as an issue.\n");
-                quit::with_code(exitcode::UNAVAILABLE);
-            }
-            OrderResult::Failed => {
-                message::error("There was an issue running the transaction.\n");
-                quit::with_code(exitcode::UNAVAILABLE);
-            }
+        if let Err(err) = self.apt_cache().do_install(&mut installer) {
+            util::handle_errors(&err);
+            quit::with_code(exitcode::UNAVAILABLE);
         }
     }
 
-    /// Get a reference to the generated pkglist (contains a combined APT+MPR cache).
+    /// Get a reference to the generated pkglist (contains a combined APT+MPR
+    /// cache).
     /*pub fn pkglist(&self) -> &Vec<CachePackage> {
         &self.pkglist
     }*/
 
-    /// Get a reference to the generated pkgmap (a key-value pair with keys of pkgnames and values of lists of packages). Can be quicker than [`Cache::pkglist`] if you're trying to lookup a package.
+    /// Get a reference to the generated pkgmap (a key-value pair with keys of
+    /// pkgnames and values of lists of packages). Can be quicker than
+    /// [`Cache::pkglist`] if you're trying to lookup a package.
     pub fn pkgmap(&self) -> &HashMap<String, Vec<CachePackage>> {
         &self.pkgmap
     }
@@ -591,157 +594,5 @@ impl Cache {
             }
         }
         None
-    }
-}
-
-// Run a transaction using our progress reporting.
-pub fn run_transaction(cache: &AptCache, purge: bool) {
-    let mut to_install: Vec<String> = Vec::new();
-    let mut to_remove: Vec<String> = Vec::new();
-    let mut to_upgrade: Vec<String> = Vec::new();
-    let mut to_downgrade: Vec<String> = Vec::new();
-
-    for pkg in cache.packages(&PackageSort::default()) {
-        let pkgname = pkg.name();
-
-        if pkg.marked_install() {
-            to_install.push(pkgname);
-        } else if pkg.marked_delete() {
-            to_remove.push(pkgname);
-        } else if pkg.marked_downgrade() {
-            to_downgrade.push(pkgname);
-        } else if pkg.marked_upgrade() {
-            to_upgrade.push(pkgname);
-        }
-    }
-
-    // Print out the transaction to the user.
-    let is_to_install = !to_install.is_empty();
-    let is_to_remove = !to_remove.is_empty();
-    let is_to_upgrade = !to_upgrade.is_empty();
-    let is_to_downgrade = !to_downgrade.is_empty();
-
-    if is_to_install {
-        println!("{}", "The following packages will be installed:".bold());
-        util::format_apt_pkglist(&to_install);
-        println!();
-    }
-
-    if is_to_remove {
-        if purge {
-            println!(
-                "{}",
-                "The following packages (and their configuration files) will be removed:".bold()
-            );
-        } else {
-            println!("{}", "The following packages will be removed:".bold());
-        }
-
-        util::format_apt_pkglist(&to_remove);
-        println!();
-    }
-
-    if is_to_upgrade {
-        println!("{}", "The following packages will be upgraded:".bold());
-        util::format_apt_pkglist(&to_upgrade);
-        println!();
-    }
-
-    if is_to_downgrade {
-        println!("{}", "The following packages will be DOWNGRADED:".bold());
-        util::format_apt_pkglist(&to_downgrade);
-        println!();
-    }
-
-    if vec![is_to_install, is_to_remove, is_to_upgrade, is_to_downgrade].contains(&true) {
-        let to_install_string = match is_to_install {
-            true => "install".purple(),
-            false => "install".green(),
-        };
-        let to_remove_string = match is_to_remove {
-            true => "remove".purple(),
-            false => "remove".green(),
-        };
-        let to_upgrade_string = match is_to_upgrade {
-            true => "upgrade".purple(),
-            false => "upgrade".green(),
-        };
-        let to_downgrade_string = match is_to_downgrade {
-            true => "downgrade".purple(),
-            false => "downgrade".green(),
-        };
-
-        println!("{}", "Review:".bold());
-
-        println!(
-            "{}",
-            format!(
-                "- {} to {}",
-                to_install.len().to_string().blue(),
-                to_install_string,
-            )
-            .bold()
-        );
-        println!(
-            "{}",
-            format!(
-                "- {} to {}",
-                to_remove.len().to_string().blue(),
-                to_remove_string
-            )
-            .bold()
-        );
-        println!(
-            "{}",
-            format!(
-                "- {} to {}",
-                to_upgrade.len().to_string().blue(),
-                to_upgrade_string
-            )
-            .bold()
-        );
-        println!(
-            "{}",
-            format!(
-                "- {} to {}",
-                to_downgrade.len().to_string().blue(),
-                to_downgrade_string
-            )
-            .bold()
-        );
-    } else {
-        println!("{}", "Nothing found to do, quitting.".bold());
-        quit::with_code(exitcode::OK);
-    }
-
-    print!("{}", "\nWould you like to continue? [Y/n] ".bold());
-    io::stdout().flush().unwrap();
-
-    let mut resp = String::new();
-    io::stdin().read_line(&mut resp).unwrap();
-    resp.pop();
-
-    if !util::is_yes(&resp, true) {
-        println!("{}", "Aborting...".bold());
-        quit::with_code(exitcode::OK);
-    }
-
-    let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
-    if cache.get_archives(&mut updater).is_err() {
-        message::error("Failed to fetch needed archives.\n");
-        quit::with_code(exitcode::UNAVAILABLE);
-    }
-
-    let mut installer: Box<dyn InstallProgress> = Box::new(MistInstallProgress {});
-    match cache.do_install(&mut installer) {
-        OrderResult::Completed => (),
-        OrderResult::Incomplete => {
-            message::error("`cache.do_install()`returned `OrderResult::Incomplete`, which Mist doesn't know how to handle. Please report this as an issue.\n");
-            quit::with_code(exitcode::UNAVAILABLE);
-        }
-        OrderResult::Failed => {
-            message::error("There was an issue running the transaction.\n");
-            quit::with_code(exitcode::UNAVAILABLE);
-        }
     }
 }

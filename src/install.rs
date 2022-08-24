@@ -15,7 +15,9 @@ pub fn install(args: &clap::ArgMatches) {
     let mut apt_pkgs: Vec<&str> = Vec::new();
     let mut mpr_pkgs: Vec<&str> = Vec::new();
 
-    // Check real quick for any packages that cannot be found. We don't want to ask the user anything else if there's packages that cannot be found, instead we should just show those packages and abort.
+    // Check real quick for any packages that cannot be found. We don't want to ask
+    // the user anything else if there's packages that cannot be found, instead we
+    // should just show those packages and abort.
     let mut unfindable = false;
 
     for pkg in &pkglist {

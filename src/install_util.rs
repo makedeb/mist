@@ -5,7 +5,7 @@ use crate::{
     util,
 };
 use makedeb_srcinfo::SplitPackage;
-use rust_apt::config::Config;
+use rust_apt::{config::Config, package::Version};
 use std::{env, fs};
 
 pub fn exit_with_git_error(pkg: &str, res: &util::CommandResult) {
@@ -121,7 +121,9 @@ pub fn clone_mpr_pkgs(pkglist: &Vec<&str>, mpr_url: &str) {
 
 /// Mark an MPR package for installation, as well as its dependencies.
 /// This function gets recursively called until a resolution is met.
-/// This returns a list of the package's dependencies that were marked to be installed. Note that ordering of said dependencies must be handled outside of this function though.
+/// This returns a list of the package's dependencies that were marked to be
+/// installed. Note that ordering of said dependencies must be handled outside
+/// of this function though.
 fn resolve_mpr_package(
     cache: &Cache,
     pkg: &str,
@@ -145,12 +147,14 @@ fn resolve_mpr_package(
 
     // Get the keys to get dependency and conflicts variables from.
     // Each dep group is a string such as 'pkg1|pkg2>=3'.
-    // Conflicting packages can't have the `|` operator, so reflect that in the variable name here.
+    // Conflicting packages can't have the `|` operator, so reflect that in the
+    // variable name here.
     let mut dep_groups: Vec<String> = Vec::new();
     let mut conflicts: Vec<String> = Vec::new();
 
-    // See if we can find dependencies in the order makedeb resolves distro-arch variables.
-    // We're calling the struct's methods directly so we don't have to repeat the same code three times in a row. Who'd want that?
+    // See if we can find dependencies in the order makedeb resolves distro-arch
+    // variables. We're calling the struct's methods directly so we don't have
+    // to repeat the same code three times in a row. Who'd want that?
     for dep_func in [
         MprPackage::get_depends,
         MprPackage::get_makedepends,
@@ -167,8 +171,9 @@ fn resolve_mpr_package(
         }
     }
 
-    // Sadly we must duplicate the above code for our 'conflicts' vector, at least from what I've currently tried.
-    // TODO: Simplify so we don't duplicate, thanks! :D
+    // Sadly we must duplicate the above code for our 'conflicts' vector, at least
+    // from what I've currently tried. TODO: Simplify so we don't duplicate,
+    // thanks! :D
     if let Some(mut deps) = mpr_pkg.get_conflicts(Some(&system_distro), Some(&system_arch)) {
         conflicts.append(&mut deps);
     } else if let Some(mut deps) = mpr_pkg.get_conflicts(Some(&system_distro), None) {
@@ -184,61 +189,64 @@ fn resolve_mpr_package(
         let mut good_dep_found = false;
         let deps: Vec<&str> = dep_group.split('|').collect();
 
-        for dep_str in deps {
+        'dep: for dep_str in deps {
             let dep = SplitPackage::new(dep_str);
 
             // Find a version of a package that satisfies our requirements.
-            let cache_apt_pkg = cache.get_apt_pkg(&dep.pkgname);
             let mpr_pkg = cache.mpr_cache().packages().get(&dep.pkgname);
 
-            // We want to prefer the APT package for any dependencies, so test that first.
-            if let Some(pkg) = cache_apt_pkg {
-                let version_satisfied: bool;
-                let apt_pkg = cache.apt_cache().get(&pkg.pkgname).unwrap();
+            if cache.get_apt_pkg(&dep.pkgname).is_some() {
+                // Get any package versions (as well as provided package versions) that can
+                // satisfy the version specified by `dep.operator`. If there is
+                // no operator, then all versions match.
+                let mut versions: Vec<Version> = Vec::new();
+                let apt_pkg = cache.apt_cache().get(&dep.pkgname).unwrap();
 
-                if let Some(dep_version) = dep.version {
-                    let apt_version = apt_pkg.candidate().unwrap().version();
-                    version_satisfied = util::check_version_requirement(
-                        &apt_version,
-                        &dep.operator.unwrap(),
-                        &dep_version,
-                    );
+                if dep.version.is_none() {
+                    for ver in apt_pkg.versions() {
+                        versions.push(ver);
+                    }
+
+                    for ver in apt_pkg.rev_provides_list(None) {
+                        versions.push(ver);
+                    }
                 } else {
-                    version_satisfied = true;
-                }
+                    let dep_operator = dep.operator.as_ref().unwrap();
+                    let dep_version = dep.version.as_ref().unwrap();
 
-                if version_satisfied {
-                    if apt_pkg.marked_install() {
-                        good_dep_found = true;
-                        break;
-                    } else if apt_pkg.marked_keep() {
-                        apt_pkg.mark_install(true, false).then_some(()).unwrap();
-                        apt_pkg.protect();
-                        good_dep_found = true;
-                        break;
+                    for ver in apt_pkg.versions() {
+                        if util::check_version_requirement(
+                            &ver.version(),
+                            dep_operator,
+                            dep_version,
+                        ) {
+                            versions.push(ver);
+                        }
+                    }
+
+                    for ver in apt_pkg.rev_provides_list(Some((dep_operator, dep_version))) {
+                        versions.push(ver);
                     }
                 }
-            // The APT package didn't meet our requirements, so check the MPR package.
-            } else if let Some(pkg) = mpr_pkg {
-                let version_satisfied: bool;
 
-                if let Some(dep_version) = dep.version {
-                    version_satisfied = util::check_version_requirement(
-                        &pkg.version,
-                        &dep.operator.unwrap(),
-                        &dep_version,
-                    );
-                } else {
-                    version_satisfied = true;
+                // If one of the available versions is installed, then it satisfies the dep.
+                for ver in &versions {
+                    if ver.parent().is_installed() && &ver.parent().candidate().unwrap() == ver {
+                        good_dep_found = true;
+                        break 'dep;
+                    }
                 }
 
-                if version_satisfied {
-                    mpr_pkglist.append(&mut resolve_mpr_package(
-                        cache,
-                        &pkg.pkgname,
-                        current_recursion + 1,
-                        recursion_limit,
-                    ));
+                // Otherwise just mark the first available version as satisfying the dep.
+                if let Some(ver) = versions.get(0) {
+                    ver.set_candidate();
+                    ver.parent()
+                        .mark_install(false, false)
+                        .then_some(())
+                        .unwrap();
+                    ver.parent().protect();
+                    good_dep_found = true;
+                    break 'dep;
                 }
             }
         }
@@ -273,7 +281,8 @@ pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<String> {
         mpr_pkglist.append(&mut resolve_mpr_package(cache, pkg, 1, recursion_limit));
     }
 
-    // TODO: This list needs ordered before returning it so that MPR packages are installed in the correct way.
+    // TODO: This list needs ordered before returning it so that MPR packages are
+    // installed in the correct way.
     message::warning("PLEASE ORDER BEFORE MERGE {:?} THX!\n");
     mpr_pkglist
 }

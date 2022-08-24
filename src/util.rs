@@ -40,13 +40,13 @@ impl<'a> AuthenticatedRequest<'a> {
             }
         };
 
-        // Check the response and see if we got a bad API token error. If we did, go ahead and
-        // abort the program.
+        // Check the response and see if we got a bad API token error. If we did, go
+        // ahead and abort the program.
         let resp_text = resp.text().unwrap();
 
         if let Ok(json) = serde_json::from_str::<AuthenticationError>(&resp_text) {
-            // TODO: We need to define a more suitable way for machine parsing of errors in the
-            // MPR. Maybe something like '{"err_type": "invalid_api_key"}'.
+            // TODO: We need to define a more suitable way for machine parsing of errors in
+            // the MPR. Maybe something like '{"err_type": "invalid_api_key"}'.
             if json.resp_type == "error" && json.code == "err_invalid_api_key" {
                 message::error("Invalid API key was passed in.\n");
                 quit::with_code(exitcode::USAGE);
@@ -105,8 +105,8 @@ impl<'a> Command<'a> {
     pub fn run(&self) -> CommandResult {
         let cmd_name = self.args.first().unwrap();
         let cmd_args = &self.args[1..];
-        // Functions like 'ProcCommand::stdin()' return references to the object created by
-        // 'ProcCommand::new()', which returns the object itself.
+        // Functions like 'ProcCommand::stdin()' return references to the object created
+        // by 'ProcCommand::new()', which returns the object itself.
         // We want to only interact with references to the object from hereon out.
         let mut _result = ProcCommand::new(cmd_name);
         let mut result = &mut _result;
@@ -170,7 +170,8 @@ pub fn handle_errors(err_str: &apt_util::Exception) {
 
 /// Format a list of package names in the way APT would.
 pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
-    // All package lines always start with two spaces, so pretend like we have two less characters.
+    // All package lines always start with two spaces, so pretend like we have two
+    // less characters.
     let term_width = apt_util::terminal_width() - 2;
     let mut output = String::from("  ");
     let mut current_width = 0;
@@ -191,7 +192,8 @@ pub fn format_apt_pkglist<T: AsRef<str> + Display>(pkgnames: &Vec<T>) {
     println!("{}", output);
 }
 
-/// Check if a response was a "yes" response. 'default' is what to return if 'resp' is empty.
+/// Check if a response was a "yes" response. 'default' is what to return if
+/// 'resp' is empty.
 pub fn is_yes(resp: &str, default: bool) -> bool {
     resp.to_lowercase() == "y" || (resp.is_empty() && default)
 }
@@ -203,7 +205,9 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
     let options_len = options.len();
     message::question(question);
 
-    // Panic if no options were passed in, there's nothing to work with there. This function should only be used internally anyway, so this just gives a heads up that it's being used incorrectly.
+    // Panic if no options were passed in, there's nothing to work with there. This
+    // function should only be used internally anyway, so this just gives a heads up
+    // that it's being used incorrectly.
     if options.is_empty() {
         panic!("No values passed in for `options` parameter");
     }
@@ -300,7 +304,8 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
     result.unwrap()
 }
 
-/// Get the system's distro and architecture. The first value returned is the distribution, and the second is the architecture.
+/// Get the system's distro and architecture. The first value returned is the
+/// distribution, and the second is the architecture.
 pub fn get_distro_arch_info() -> (String, String) {
     let distro_cmd = Command::new(vec!["lsb_release", "-cs"], true, None).run();
     let arch_cmd = Command::new(vec!["dpkg", "--print-architecture"], true, None).run();

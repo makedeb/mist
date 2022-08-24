@@ -5,7 +5,7 @@
 :mansource: Git
 
 == NAME
-mist - The official helper for the makedeb Package Repository
+mist - The official command-line interface for the makedeb Package Repository
 
 == SYNOPSIS
 *mist* clone _pkgbase_ [_options_] ...

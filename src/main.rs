@@ -169,6 +169,7 @@ fn get_cli() -> Command<'static> {
                         .help("Automatically remove any unneeded packages")
                         .long("autoremove")
                 )
+                .arg(mpr_url_arg.clone().hide(true))
         )
         .subcommand(
             Command::new("search")
