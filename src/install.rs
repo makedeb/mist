@@ -80,5 +80,5 @@ pub fn install(args: &clap::ArgMatches) {
         quit::with_code(exitcode::UNAVAILABLE);
     }
 
-    cache.commit(&mpr_install_order);
+    cache.commit(&mpr_install_order, mpr_url);
 }

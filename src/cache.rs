@@ -1,5 +1,5 @@
 use crate::{
-    message,
+    install_util, message,
     progress::{MistAcquireProgress, MistInstallProgress},
     style::Colorize,
     util,
@@ -117,6 +117,22 @@ impl MprCache {
     }
 
     pub fn new(mpr_url: &str) -> Self {
+        // If we're running under Sudo, temporary go to that user.
+        let sudo_uid = match util::get_sudo_base_user() {
+            Some((sudo_uid, _)) => {
+                users::switch::set_effective_uid(sudo_uid).unwrap();
+                Some(sudo_uid)
+            }
+            None => None,
+        };
+
+        // Go back to the root user when needed.
+        let back_to_root = || {
+            if sudo_uid.is_some() {
+                users::switch::set_effective_uid(0).unwrap();
+            }
+        };
+
         // Try reading the cache file. If it doesn't exist or it's older than five
         // minutes, we have to update the cache file.
         let mut cache_file_path = util::xdg::get_cache_dir();
@@ -224,6 +240,7 @@ impl MprCache {
             }
 
             // Return the new cache object.
+            back_to_root();
             Self {
                 packages: Self::vec_to_map(cache),
             }
@@ -242,13 +259,17 @@ impl MprCache {
             };
 
             match valid_archive(cache_file) {
-                Ok(file) => Self {
-                    packages: Self::vec_to_map(file),
-                },
+                Ok(file) => {
+                    back_to_root();
+                    Self {
+                        packages: Self::vec_to_map(file),
+                    }
+                }
                 Err(_) => {
                     // On an error, let's just remove the cache file and regenerate it by recalling
                     // this function.
                     fs::remove_file(cache_file_path).unwrap();
+                    back_to_root();
                     Self::new(mpr_url)
                 }
             }
@@ -390,7 +411,7 @@ impl Cache {
 
     /// Run a transaction.
     /// `mpr_pkgs` is the list of MPR packages to install.
-    pub fn commit(&self, mpr_pkgs: &Vec<String>) {
+    pub fn commit(&self, mpr_pkgs: &Vec<Vec<String>>, mpr_url: &str) {
         let mut to_install: Vec<String> = Vec::new();
         let mut to_remove: Vec<String> = Vec::new();
         let mut to_purge: Vec<String> = Vec::new();
@@ -416,7 +437,7 @@ impl Cache {
         }
 
         // Report MPR packages.
-        for pkg in mpr_pkgs {
+        for pkg in mpr_pkgs.iter().flatten() {
             let mpr_string = format!("{}{}", "mpr/".to_owned().green(), pkg);
             to_install.push(mpr_string);
         }
@@ -536,6 +557,108 @@ impl Cache {
             quit::with_code(exitcode::OK);
         }
 
+        println!();
+
+        // If we're running under Sudo, temporary go to that user.
+        let sudo_uid = match util::get_sudo_base_user() {
+            Some((sudo_uid, _)) => Some(sudo_uid),
+            None => None,
+        };
+
+        // Go to the normal user.
+        let back_to_normal = || {
+            if let Some(uid) = sudo_uid {
+                users::switch::set_effective_uid(uid).unwrap();
+            }
+        };
+
+        // Go back to the root user when needed.
+        let back_to_root = || {
+            if sudo_uid.is_some() {
+                users::switch::set_effective_uid(0).unwrap();
+            }
+        };
+
+        // Clone MPR packages.
+        //
+        // We should be able to flatten the `mpr_pkgs` list to get this variable, but I
+        // haven't gotten it to work yet. TODO: Make it work, duh.
+        let mut pkgs = Vec::new();
+
+        for vec in mpr_pkgs {
+            for pkg in vec {
+                pkgs.push(pkg.as_str());
+            }
+        }
+
+        install_util::clone_mpr_pkgs(&pkgs, mpr_url);
+
+        // Review MPR packages.
+
+        // Get the editor to review package files with.
+        let editor = match edit::get_editor() {
+            Ok(editor) => editor.into_os_string().into_string().unwrap(),
+            Err(err) => {
+                message::error(&format!(
+                    "Couldn't find an editor to review package files with. [{}]\n",
+                    err
+                ));
+
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        };
+
+        for pkg in pkgs {
+            println!();
+            let mut review_files = true;
+
+            while review_files {
+                message::question(&format!("Review files for '{}'? [Y/n] ", pkg.green()));
+                io::stdout().flush().unwrap();
+
+                let mut response = String::new();
+                io::stdin().read_line(&mut resp).unwrap();
+                resp.pop();
+
+                if !util::is_yes(&resp, true) {
+                    review_files = false;
+                    break;
+                }
+
+                // Review every file except the `.SRCINFO` file.
+                // We don't need to recursively walk this directory as the MPR doesn't support
+                // Git repos with folders.
+                let mut cache_dir = util::xdg::get_cache_dir();
+                cache_dir.push("git-pkg");
+                cache_dir.push(pkg);
+
+                let mut cmd_args = vec![editor.clone()];
+
+                for file_result in fs::read_dir(cache_dir).unwrap() {
+                    let file = file_result.unwrap();
+                    let file_name = file.file_name().into_string().unwrap();
+
+                    if vec![".git", ".SRCINFO"].contains(&file_name.as_str()) {
+                        continue;
+                    }
+
+                    // Panic if this path is a directory. The MPR doesn't allow that, and we got
+                    // something funky if we do.
+                    if file.file_type().unwrap().is_dir() {
+                        unreachable!();
+                    }
+
+                    // Now we can review the file.
+                    cmd_args.push(file_name);
+                }
+
+                let cmd = util::Command::new(cmd_args, false, None);
+                cmd.run();
+            }
+        }
+
+        // Install APT packages.
+        back_to_root();
         let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
         if self.apt_cache().get_archives(&mut updater).is_err() {
             message::error("Failed to fetch needed archives\n");
@@ -547,6 +670,14 @@ impl Cache {
             util::handle_errors(&err);
             quit::with_code(exitcode::UNAVAILABLE);
         }
+
+        // If we're not installing any MPR packages, go ahead and quit.
+        if mpr_pkgs.is_empty() {
+            quit::with_code(exitcode::OK);
+        }
+
+        // Build and install MPR packages.
+        back_to_normal();
     }
 
     /// Get a reference to the generated pkglist (contains a combined APT+MPR

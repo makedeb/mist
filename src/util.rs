@@ -1,7 +1,7 @@
 use crate::{apt_util, message, style::Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs,
+    env, fs,
     io::{self, Write},
     path,
     process::{Command as ProcCommand, ExitStatus, Stdio},
@@ -88,15 +88,21 @@ pub struct CommandResult {
 }
 
 pub struct Command<'a> {
-    args: Vec<&'a str>,
+    args: Vec<String>,
     capture: bool,
     stdin: Option<&'a str>,
 }
 
 impl<'a> Command<'a> {
-    pub fn new(args: Vec<&'a str>, capture: bool, stdin: Option<&'a str>) -> Self {
+    pub fn new<T: AsRef<str>>(args: Vec<T>, capture: bool, stdin: Option<&'a str>) -> Self {
+        let mut unref_args = Vec::new();
+
+        for arg in args {
+            unref_args.push(arg.as_ref().to_string());
+        }
+
         Self {
-            args,
+            args: unref_args,
             capture,
             stdin,
         }
@@ -314,6 +320,22 @@ pub fn get_distro_arch_info() -> (String, String) {
     let arch = std::str::from_utf8(&arch_cmd.stdout).unwrap().to_owned();
 
     (distro, arch)
+}
+
+/// Get the system's user ID and username that are present from sudo. The first
+/// value returned is the user ID, and the second is the username.
+pub fn get_sudo_base_user() -> Option<(u32, String)> {
+    let sudo_uid = match env::var("SUDO_UID") {
+        Ok(uid) => Some(uid.parse::<u32>().unwrap()),
+        Err(_) => None,
+    };
+    let sudo_username = env::var("SUDO_USER").ok();
+
+    if sudo_uid.is_none() || sudo_username.is_none() {
+        None
+    } else {
+        Some((sudo_uid.unwrap(), sudo_username.unwrap()))
+    }
 }
 
 /// Check if a version matches requirements.

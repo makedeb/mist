@@ -18,6 +18,7 @@ mod whoami;
 pub use rust_apt::util as apt_util;
 
 use clap::{self, Arg, Command, PossibleValue};
+use std::env;
 
 #[rustfmt::skip]
 fn get_cli() -> Command<'static> {
@@ -202,6 +203,13 @@ fn get_cli() -> Command<'static> {
 #[quit::main]
 fn main() {
     let cmd_results = get_cli().get_matches();
+
+    // If we are under sudo, set the `HOME` environment variable so that calls to
+    // functions in the [`dirs`] crate work properly. Otherwise the `HOME` directory
+    // is set to `/root` when the `-e` flag isn't passed to `sudo`.
+    if let Some((_, username)) = util::get_sudo_base_user() {
+        env::set_var("HOME", &format!("/home/{}", username));
+    }
 
     match cmd_results.subcommand() {
         Some(("clone", args)) => clone::clone(args),

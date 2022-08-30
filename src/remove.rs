@@ -59,5 +59,5 @@ pub fn remove(args: &clap::ArgMatches) {
     apt_util::apt_unlock();
 
     // Commit our changes.
-    cache.commit(&Vec::new());
+    cache.commit(&Vec::new(), mpr_url);
 }
