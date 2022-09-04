@@ -21,21 +21,7 @@ pub fn exit_with_git_error(pkg: &str, res: &util::CommandResult) {
 }
 
 pub fn clone_mpr_pkgs(pkglist: &Vec<&str>, mpr_url: &str) {
-    // If we're running under Sudo, temporary go to that user.
-    let sudo_uid = match util::get_sudo_base_user() {
-        Some((sudo_uid, _)) => {
-            users::switch::set_effective_uid(sudo_uid).unwrap();
-            Some(sudo_uid)
-        }
-        None => None,
-    };
-
-    // Go back to the root user when needed.
-    let back_to_root = || {
-        if sudo_uid.is_some() {
-            users::switch::set_effective_uid(0).unwrap();
-        }
-    };
+    util::sudo::to_normal();
 
     let mut cache_dir = util::xdg::get_cache_dir();
     cache_dir.push("git-pkg");
@@ -134,7 +120,7 @@ pub fn clone_mpr_pkgs(pkglist: &Vec<&str>, mpr_url: &str) {
         }
     }
 
-    back_to_root();
+    util::sudo::to_root();
 }
 
 /// Mark an MPR package for installation, as well as its dependencies.

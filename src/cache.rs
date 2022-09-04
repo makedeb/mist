@@ -11,7 +11,7 @@ use rust_apt::{
 };
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
-use std::{collections::HashMap, fs, io, time::SystemTime};
+use std::{env, collections::HashMap, fs, io, time::SystemTime};
 
 ///////////////////////////
 // Stuff for MPR caches. //
@@ -117,21 +117,7 @@ impl MprCache {
     }
 
     pub fn new(mpr_url: &str) -> Self {
-        // If we're running under Sudo, temporary go to that user.
-        let sudo_uid = match util::get_sudo_base_user() {
-            Some((sudo_uid, _)) => {
-                users::switch::set_effective_uid(sudo_uid).unwrap();
-                Some(sudo_uid)
-            }
-            None => None,
-        };
-
-        // Go back to the root user when needed.
-        let back_to_root = || {
-            if sudo_uid.is_some() {
-                users::switch::set_effective_uid(0).unwrap();
-            }
-        };
+        util::sudo::to_normal();
 
         // Try reading the cache file. If it doesn't exist or it's older than five
         // minutes, we have to update the cache file.
@@ -240,7 +226,7 @@ impl MprCache {
             }
 
             // Return the new cache object.
-            back_to_root();
+            util::sudo::to_root();
             Self {
                 packages: Self::vec_to_map(cache),
             }
@@ -260,7 +246,7 @@ impl MprCache {
 
             match valid_archive(cache_file) {
                 Ok(file) => {
-                    back_to_root();
+                    util::sudo::to_root();
                     Self {
                         packages: Self::vec_to_map(file),
                     }
@@ -269,7 +255,7 @@ impl MprCache {
                     // On an error, let's just remove the cache file and regenerate it by recalling
                     // this function.
                     fs::remove_file(cache_file_path).unwrap();
-                    back_to_root();
+                    util::sudo::to_root();
                     Self::new(mpr_url)
                 }
             }
@@ -558,26 +544,7 @@ impl Cache {
         }
 
         println!();
-
-        // If we're running under Sudo, temporary go to that user.
-        let sudo_uid = match util::get_sudo_base_user() {
-            Some((sudo_uid, _)) => Some(sudo_uid),
-            None => None,
-        };
-
-        // Go to the normal user.
-        let back_to_normal = || {
-            if let Some(uid) = sudo_uid {
-                users::switch::set_effective_uid(uid).unwrap();
-            }
-        };
-
-        // Go back to the root user when needed.
-        let back_to_root = || {
-            if sudo_uid.is_some() {
-                users::switch::set_effective_uid(0).unwrap();
-            }
-        };
+        util::sudo::to_normal();
 
         // Clone MPR packages.
         //
@@ -658,7 +625,7 @@ impl Cache {
         }
 
         // Install APT packages.
-        back_to_root();
+        util::sudo::to_root();
         let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
         if self.apt_cache().get_archives(&mut updater).is_err() {
             message::error("Failed to fetch needed archives\n");
@@ -677,7 +644,46 @@ impl Cache {
         }
 
         // Build and install MPR packages.
-        back_to_normal();
+        let current_dir = env::current_dir().unwrap();
+        let mut cache_dir = util::xdg::get_cache_dir();
+        cache_dir.push("git-pkg");
+        util::sudo::to_normal();
+
+        for pkg_group in mpr_pkgs {
+            for pkg in pkg_group {
+                let mut git_dir = cache_dir.clone();
+                git_dir.push(pkg);
+                env::set_current_dir(git_dir).unwrap();
+
+                // See this package has a control field value of 'MPR-Package'. If it does, don't add it to our arg list.
+                // TODO: We need to add this key to makedeb's .SRCINFO files.
+                let mpr_package_field = {
+                    let cmd = util::Command::new(
+                        vec!["bash", "-c", "source PKGBUILD; printf '%s\n' \"${control_fields[@]}\" | grep -q '^MPR-Package:'"],
+                        false,
+                        None
+                    );
+                    cmd.run().exit_status.success()
+                };
+
+                let mut cmd_args = vec!["makedeb", "-si"];
+
+                if !mpr_package_field {
+                    cmd_args.push("-H");
+                    cmd_args.push("MPR-Package: yes");
+                }
+
+                message::info(&format!("Running makedeb for '{}'...\n", pkg.green()));
+                if !util::Command::new(cmd_args, false, None).run().exit_status.success() {
+                    message::error("Failed to run makedeb.\n");
+                    quit::with_code(exitcode::UNAVAILABLE);
+                }
+
+                env::set_current_dir(&current_dir).unwrap();
+            }
+        }
+
+        util::sudo::to_root();
     }
 
     /// Get a reference to the generated pkglist (contains a combined APT+MPR

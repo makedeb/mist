@@ -9,8 +9,8 @@ use std::{
 };
 
 use core::cmp::Ordering;
-
 use core::fmt::Display;
+use lazy_static::lazy_static;
 use regex::Regex;
 
 #[derive(Deserialize, Serialize)]
@@ -374,5 +374,18 @@ pub mod xdg {
         }
 
         cache_dir
+    }
+}
+
+/// Sudo user management stuff.
+pub mod sudo {
+    /// Change the user to root.
+    pub fn to_root() {
+        users::switch::set_effective_uid(0).unwrap();
+    }
+
+    /// Change the user to the non-root user.
+    pub fn to_normal() {
+        users::switch::set_effective_uid(users::get_current_uid()).unwrap();
     }
 }
