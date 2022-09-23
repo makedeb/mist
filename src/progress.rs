@@ -41,7 +41,7 @@ impl AcquireProgress for MistAcquireProgress {
         } else {
             println!(
                 "{} {}",
-                format!("{}{} ({})", "Err:", id, error_text).yellow().bold(),
+                format!("{}{} ({})", "Err:", id, error_text).red().bold(),
                 description
             );
         }

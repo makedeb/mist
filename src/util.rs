@@ -1,7 +1,7 @@
 use crate::{apt_util, message, style::Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
-    env, fs,
+    env, fs as std_fs,
     io::{self, Write},
     path,
     process::{Command as ProcCommand, ExitStatus, Stdio},
@@ -10,7 +10,6 @@ use std::{
 
 use core::cmp::Ordering;
 use core::fmt::Display;
-use lazy_static::lazy_static;
 use regex::Regex;
 
 #[derive(Deserialize, Serialize)]
@@ -360,7 +359,7 @@ pub mod xdg {
         cache_dir.push("mist");
 
         if !cache_dir.exists() {
-            if super::fs::create_dir_all(&cache_dir).is_err() {
+            if super::std_fs::create_dir_all(&cache_dir).is_err() {
                 super::message::error(&format!(
                     "Failed to create directory for cache directory ({}).",
                     cache_dir.display()
@@ -374,6 +373,64 @@ pub mod xdg {
         }
 
         cache_dir
+    }
+
+    /// Return the global cache directory, for use by all users.
+    pub fn get_global_cache_dir() -> super::path::PathBuf {
+        ["/var", "cache", "mist"].iter().collect()
+    }
+}
+
+/// File/Folder wrappers for my joy.
+pub mod fs {
+    use crate::style::Colorize;
+
+    /// Create a folder, aborting if unable to or the specified path already
+    /// exists and isn't a folder.
+    pub fn create_dir(directory: &str) {
+        let path = super::path::Path::new(directory);
+        if !path.exists() {
+            if super::std_fs::create_dir_all(&path).is_err() {
+                super::message::error(&format!(
+                    "Failed to create directory ({}).\n",
+                    directory.green().bold()
+                ));
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        } else if !path.is_dir() {
+            super::message::error(&format!(
+                "Path '{}' needs to be a directory, but it isn't.\n",
+                directory.green().bold()
+            ));
+            quit::with_code(exitcode::UNAVAILABLE);
+        }
+    }
+
+    /// Remove a folder recursively, abourting if unable to.
+    pub fn remove_dir_all(directory: &str) {
+        if let Err(err) = super::std_fs::remove_dir_all(directory) {
+            super::message::error(&format!(
+                "Failed to remove directory '{}' [{}].\n",
+                directory.bold().green(),
+                err.to_string().bold()
+            ));
+            quit::with_code(exitcode::UNAVAILABLE);
+        }
+    }
+
+    /// Create a file, aborting if unable to do so.
+    pub fn create_file(path: &str) -> super::std_fs::File {
+        match super::std_fs::File::create(path) {
+            Ok(file) => file,
+            Err(err) => {
+                super::message::error(&format!(
+                    "Failed to create file '{}' [{}]\n",
+                    path.bold().green(),
+                    err.to_string().bold()
+                ));
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        }
     }
 }
 

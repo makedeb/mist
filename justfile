@@ -7,6 +7,8 @@ default:
 
 build *ARGS:
     #!/usr/bin/env bash
+    set -e
+
     # Set Cargo args.
     if [[ "${CARGO_RELEASE:+x}" == 'x' ]]; then
         set -- "${@}" --release
@@ -28,5 +30,6 @@ build *ARGS:
 
 run *ARGS:
     #!/usr/bin/env bash
+    set -e
     just build
     target/debug/mist "${@}"

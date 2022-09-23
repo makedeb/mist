@@ -5,13 +5,14 @@ use crate::{
     util,
 };
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
+use makedeb_srcinfo::SplitDependency;
 use rust_apt::{
     cache::{Cache as AptCache, PackageSort},
     progress::{AcquireProgress, InstallProgress},
 };
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
-use std::{env, collections::HashMap, fs, io, time::SystemTime};
+use std::{collections::HashMap, env, fs, io, process::Command, time::SystemTime};
 
 ///////////////////////////
 // Stuff for MPR caches. //
@@ -96,6 +97,50 @@ impl MprPackage {
     pub fn get_conflicts(&self, distro: Option<&str>, arch: Option<&str>) -> Option<Vec<String>> {
         self.get_pkg_group(distro, arch, &self.conflicts)
     }
+
+    /// Get one of the above dependency vectors, looping through the order of
+    /// specificity for distro-architecture variables used by makedeb.
+    fn get_system_pkgs(
+        &self,
+        f: fn(&Self, Option<&str>, Option<&str>) -> Option<Vec<String>>,
+        distro: &str,
+        arch: &str,
+    ) -> Option<Vec<String>> {
+        if let Some(deps) = f(self, Some(distro), Some(arch)) {
+            Some(deps)
+        } else if let Some(deps) = f(self, Some(distro), None) {
+            Some(deps)
+        } else if let Some(deps) = f(self, None, Some(arch)) {
+            Some(deps)
+        } else if let Some(deps) = f(self, None, None) {
+            Some(deps)
+        } else {
+            None
+        }
+    }
+
+    /// Get the `depends` values of this package, looping through the order of
+    /// specificity for distro-architecture variables used by makedeb.
+    pub fn get_system_depends(&self, distro: &str, arch: &str) -> Option<Vec<String>> {
+        self.get_system_pkgs(Self::get_depends, distro, arch)
+    }
+
+    /// Get the `makedepends` values of this package, looping through the order
+    /// of specificity for distro-architecture variables used by makedeb.
+    pub fn get_system_makedepends(&self, distro: &str, arch: &str) -> Option<Vec<String>> {
+        self.get_system_pkgs(Self::get_makedepends, distro, arch)
+    }
+    /// Get the `checkdepends` values of this package, looping through the order
+    /// of specificity for distro-architecture variables used by makedeb.
+    pub fn get_system_checkdepends(&self, distro: &str, arch: &str) -> Option<Vec<String>> {
+        self.get_system_pkgs(Self::get_checkdepends, distro, arch)
+    }
+
+    /// Get the `conflicts` values of this package, looping through the order of
+    /// specificity for distro-architecture variables used by makedeb.
+    pub fn get_system_conflicts(&self, distro: &str, arch: &str) -> Option<Vec<String>> {
+        self.get_system_pkgs(Self::get_conflicts, distro, arch)
+    }
 }
 
 pub struct MprCache {
@@ -116,148 +161,49 @@ impl MprCache {
         map
     }
 
-    pub fn new(mpr_url: &str) -> Self {
-        util::sudo::to_normal();
+    pub fn validate_data(data: &[u8]) -> Result<Self, ()> {
+        let mut file_gz = GzDecoder::new(data);
+        let mut file_json = String::new();
 
-        // Try reading the cache file. If it doesn't exist or it's older than five
-        // minutes, we have to update the cache file.
-        let mut cache_file_path = util::xdg::get_cache_dir();
-        cache_file_path.push("cache.gz");
+        match file_gz.read_to_string(&mut file_json) {
+            Ok(_) => (),
+            Err(_) => return Err(()),
+        }
 
-        let mut update_cache = false;
-
-        match fs::metadata(cache_file_path.clone()) {
-            // The file exists. Make sure it's been updated in the last five minutes.
-            Ok(metadata) => {
-                let five_minutes = 60 * 5; // The MPR updates package archives every five minutes.
-                let current_time = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
-                let file_last_modified = metadata
-                    .modified()
-                    .unwrap()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
-
-                if (current_time - file_last_modified) > five_minutes {
-                    update_cache = true;
-                };
-            }
-            // The file doesn't exist. We need to create it.
-            Err(err) => {
-                if err.raw_os_error().unwrap() != 2 {
-                    message::error(&format!(
-                        "Encountered an unknown error while reading cache. [{}]\n",
-                        err
-                    ));
-                    quit::with_code(exitcode::OSFILE);
-                } else {
-                    update_cache = true;
-
-                    match fs::File::create(cache_file_path.clone()) {
-                        Ok(_) => (),
-                        Err(err) => {
-                            message::error(&format!(
-                                "Encountered an unknown error while reading cache. [{}]\n",
-                                err
-                            ));
-                            quit::with_code(exitcode::OSFILE);
-                        }
-                    }
-                }
-            }
+        let cache = match serde_json::from_str::<Vec<MprPackage>>(&file_json) {
+            Ok(json) => json,
+            Err(err) => return Err(()),
         };
 
-        // If we need to, update the cache file.
-        if update_cache {
-            // Download the archive.
-            let resp =
-                match reqwest::blocking::get(format!("{}/packages-meta-ext-v2.json.gz", mpr_url)) {
-                    Ok(resp) => resp,
-                    Err(err) => {
-                        message::error(&format!("Unable to make request. [{}]\n", err));
-                        quit::with_code(exitcode::UNAVAILABLE);
-                    }
-                };
+        return Ok(Self {
+            packages: Self::vec_to_map(cache),
+        });
+    }
 
-            if !resp.status().is_success() {
-                message::error(&format!(
-                    "Failed to download package archive from the MPR. [{}]\n",
-                    resp.status()
-                ));
-                quit::with_code(exitcode::TEMPFAIL);
-            }
+    pub fn new(mpr_url: &str) -> Self {
+        // Try reading the cache file. If it doesn't exist or it's older than five
+        // minutes, we have to update the cache file.
+        let mut cache_file_path = util::xdg::get_global_cache_dir();
+        cache_file_path.push("cache.gz");
 
-            // Decompress the archive.
-            let cache = match valid_archive(resp) {
-                Ok(cache) => cache,
-                Err(num) => {
-                    if num == 1 {
-                        message::error("Failed to decompress package archive from the MPR.\n");
-                        quit::with_code(exitcode::TEMPFAIL);
-                    } else {
-                        message::error(
-                            "Failed to verify integrity of package archive from the MPR.\n",
-                        );
-                        quit::with_code(exitcode::TEMPFAIL);
-                    }
-                }
-            };
-
-            // Now that the JSON has been verified, let's write out the archive to the cache
-            // file.
-            let mut config_compressor = GzEncoder::new(Vec::new(), Compression::default());
-            config_compressor
-                .write_all(serde_json::to_string(&cache).unwrap().as_bytes())
-                .unwrap();
-            let config_gz = config_compressor.finish().unwrap();
-
-            match fs::write(cache_file_path, config_gz) {
-                Ok(()) => (),
-                Err(err) => {
-                    message::error(&format!(
-                        "Failed to write updated package archive. [{}]\n",
-                        err
-                    ));
-                    quit::with_code(exitcode::IOERR);
-                }
-            }
-
-            // Return the new cache object.
-            util::sudo::to_root();
-            Self {
-                packages: Self::vec_to_map(cache),
-            }
-        } else {
-            // The cache is less than 5 minutes old. We still need to validate that the
-            // cache is valid though.
-            let cache_file = match fs::File::open(cache_file_path.clone()) {
-                Ok(file) => file,
-                Err(err) => {
-                    message::error(&format!(
-                        "Failed to write updated package archive. [{}]\n",
-                        err
-                    ));
-                    quit::with_code(exitcode::IOERR);
-                }
-            };
-
-            match valid_archive(cache_file) {
-                Ok(file) => {
-                    util::sudo::to_root();
-                    Self {
-                        packages: Self::vec_to_map(file),
-                    }
-                }
+        match fs::read(cache_file_path.clone()) {
+            Ok(file) => match Self::validate_data(&file) {
+                Ok(cache) => return cache,
                 Err(_) => {
-                    // On an error, let's just remove the cache file and regenerate it by recalling
-                    // this function.
-                    fs::remove_file(cache_file_path).unwrap();
-                    util::sudo::to_root();
-                    Self::new(mpr_url)
+                    message::error(&format!(
+                        "There was an issue parsing the cache archive. Try running '{}'.\n",
+                        "mist update".bold().green()
+                    ));
+                    quit::with_code(exitcode::UNAVAILABLE);
                 }
+            },
+            Err(err) => {
+                message::error(&format!(
+                    "There was an issue reading the cache archive. Try running '{}' [{}].\n",
+                    "mist update".bold().green(),
+                    err.to_string().bold()
+                ));
+                quit::with_code(exitcode::UNAVAILABLE);
             }
         }
     }
@@ -265,24 +211,6 @@ impl MprCache {
     pub fn packages(&self) -> &HashMap<String, MprPackage> {
         &self.packages
     }
-}
-
-fn valid_archive(file: impl Read) -> Result<Vec<MprPackage>, u32> {
-    let mut resp_gz = GzDecoder::new(file);
-    let mut resp_json = String::new();
-
-    match resp_gz.read_to_string(&mut resp_json) {
-        Ok(_) => (),
-        Err(_) => return Err(1),
-    }
-
-    // Feed the JSON into our struct.
-    let cache = match serde_json::from_str::<Vec<MprPackage>>(&resp_json) {
-        Ok(json) => json,
-        Err(_) => return Err(2),
-    };
-
-    Ok(cache)
 }
 
 /////////////////////////////////////////////
@@ -338,7 +266,7 @@ impl Cache {
                 pkgname: pkg.name(),
                 pkgbase: None,
                 version: candidate.version(),
-                pkgdesc: Some(candidate.summary()),
+                pkgdesc: candidate.summary(),
                 arch: Some(pkg.arch()),
                 maintainer: None,
                 num_votes: None,
@@ -655,8 +583,9 @@ impl Cache {
                 git_dir.push(pkg);
                 env::set_current_dir(git_dir).unwrap();
 
-                // See this package has a control field value of 'MPR-Package'. If it does, don't add it to our arg list.
-                // TODO: We need to add this key to makedeb's .SRCINFO files.
+                // See this package has a control field value of 'MPR-Package'. If it does,
+                // don't add it to our arg list. TODO: We need to add this key
+                // to makedeb's .SRCINFO files.
                 let mpr_package_field = {
                     let cmd = util::Command::new(
                         vec!["bash", "-c", "source PKGBUILD; printf '%s\n' \"${control_fields[@]}\" | grep -q '^MPR-Package:'"],
@@ -674,7 +603,11 @@ impl Cache {
                 }
 
                 message::info(&format!("Running makedeb for '{}'...\n", pkg.green()));
-                if !util::Command::new(cmd_args, false, None).run().exit_status.success() {
+                if !util::Command::new(cmd_args, false, None)
+                    .run()
+                    .exit_status
+                    .success()
+                {
                     message::error("Failed to run makedeb.\n");
                     quit::with_code(exitcode::UNAVAILABLE);
                 }

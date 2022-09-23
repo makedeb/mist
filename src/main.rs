@@ -1,3 +1,4 @@
+#![feature(let_chains)]
 mod cache;
 mod clone;
 mod comment;
@@ -18,7 +19,6 @@ mod whoami;
 pub use rust_apt::util as apt_util;
 
 use clap::{self, Arg, Command, PossibleValue};
-use util::CommandResult;
 use std::{
     env,
     fs::File,
@@ -197,6 +197,7 @@ fn get_cli() -> Command<'static> {
         .subcommand(
             Command::new("update")
                 .about("Update the APT cache on the system")
+                .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("whoami")
@@ -216,45 +217,50 @@ fn main() {
     // expect such behavior due to how we've designed this program to work. For
     // some reason we need to pass a type to `env::args().collect()`, not sure
     // if we for sure need it though.
-    if ["install", "upgrade"].contains(&cmd_results.subcommand().unwrap().0) {
-        let cmd_name = {
-            let cmd = env::args().collect::<Vec<String>>().remove(0);
-            if cmd.contains('/') {
-                cmd
-            } else {
-                which(cmd).unwrap().into_os_string().into_string().unwrap()
-            }
-        };
+    // if ["install", "upgrade"].contains(&cmd_results.subcommand().unwrap().0) {
+    //     let cmd_name = {
+    //         let cmd = env::args().collect::<Vec<String>>().remove(0);
+    //         if cmd.contains('/') {
+    //             cmd
+    //         } else {
+    //             which(cmd).unwrap().into_os_string().into_string().unwrap()
+    //         }
+    //     };
 
-        let cmd_metadata = File::open(cmd_name.clone()).unwrap().metadata().unwrap();
+    //     let cmd_metadata =
+    // File::open(cmd_name.clone()).unwrap().metadata().unwrap();
 
-        // Make sure `root` owns the executable.
-        if cmd_metadata.st_uid() != 0 {
-            message::error("This executable needs to be owned by `root` in order to function.\n");
-            quit::with_code(exitcode::USAGE);
-        // Make sure the `setuid` bit flag is set. This appears to be third
-        // digit in the six-digit long mode returned.
-        } else if format!("{:o}", cmd_metadata.permissions().mode())
-            .chars()
-            .nth(2)
-            .unwrap()
-            .to_string()
-            .parse::<u8>()
-            .unwrap()
-            < 4
-        {
-            message::error(
-                "This executable needs to have the `setuid` bit flag set in order to function.\n",
-            );
-            quit::with_code(exitcode::USAGE);
-        }
-    }
+    //     // Make sure `root` owns the executable.
+    //     if cmd_metadata.st_uid() != 0 {
+    //         message::error("This executable needs to be owned by `root` in order
+    // to function.\n");         quit::with_code(exitcode::USAGE);
+    //     // Make sure the `setuid` bit flag is set. This appears to be third
+    //     // digit in the six-digit long mode returned.
+    //     } else if format!("{:o}", cmd_metadata.permissions().mode())
+    //         .chars()
+    //         .nth(2)
+    //         .unwrap()
+    //         .to_string()
+    //         .parse::<u8>()
+    //         .unwrap()
+    //         < 4
+    //     {
+    //         message::error(
+    //             "This executable needs to have the `setuid` bit flag set in order
+    // to function.\n",         );
+    //         quit::with_code(exitcode::USAGE);
+    //     }
+    // }
 
-    // If we're performing an operation where root permissions are needed, make sure we got them.
-    if ["install", "update", "update", "remove"].contains(&cmd_results.subcommand().unwrap().0) && users::get_effective_uid() != 0 {
-        message::error("This command needs to be ran as root in order to function.");
-        quit::with_code(exitcode::USAGE);
-    }
+    // // If we're performing an operation where root permissions are needed, make
+    // sure // we got them.
+    // if ["install", "update", "update",
+    // "remove"].contains(&cmd_results.subcommand().unwrap().0)
+    //     && users::get_effective_uid() != 0
+    // {
+    //     message::error("This command needs to be ran as root in order to
+    // function.");     quit::with_code(exitcode::USAGE);
+    // }
 
     match cmd_results.subcommand() {
         Some(("clone", args)) => clone::clone(args),

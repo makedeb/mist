@@ -5,7 +5,7 @@ use crate::{
     util,
 };
 use makedeb_srcinfo::SplitPackage;
-use rust_apt::{config::Config, package::Version};
+use rust_apt::{cache::Cache as AptCache, config::Config, package::Version};
 use std::{env, fs};
 
 pub fn exit_with_git_error(pkg: &str, res: &util::CommandResult) {
@@ -271,22 +271,26 @@ fn resolve_mpr_package(
 /// Order marked MPR packages for installation.
 /// This function assumes all packages in `pkglist` actually exist.
 pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<Vec<String>> {
-    // The list of MPR packages that we need to install.
-    let mut mpr_pkglist = Vec::new();
+    let mut cache_dir = util::xdg::get_global_cache_dir();
+    cache_dir.push("deb-pkgs");
+    env::set_current_dir(&cache_dir).unwrap();
 
-    // The maximum recursion limit for calls to `resolve_mpr_package`.
-    let recursion_limit = Config::new().int("APT::pkgPackageManager::MaxLoopCount", 50);
+    /// Create a new cache object with all of the MPR packages recorded on this
+    /// system, and then resolve the cache and see what marked packages exist
+    /// from the MPR.
+    let mut debs_owned = vec![];
 
-    for pkg in pkglist {
-        // Append the package itself.
-        mpr_pkglist.push(pkg.to_string());
+    for path in fs::read_dir("./").unwrap() {
+        let filename = path.unwrap().file_name().into_string().unwrap();
 
-        // Append its dependencies.
-        mpr_pkglist.append(&mut resolve_mpr_package(cache, pkg, 1, recursion_limit));
+        if filename.ends_with(".deb") {
+            debs_owned.push(filename);
+        }
     }
 
-    // TODO: This list needs ordered before returning it so that MPR packages are
-    // installed in the correct way.
-    message::warning("PLEASE ORDER BEFORE MERGE {:?} THX!\n");
-    vec![mpr_pkglist]
+    let debs: Vec<&str> = debs_owned.iter().map(|s| s as &str).collect();
+
+    todo!("We're segfaulting on this line for some reason");
+    let cache = AptCache::debs(&debs).unwrap();
+    vec![]
 }
