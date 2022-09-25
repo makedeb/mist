@@ -4,15 +4,15 @@ use crate::{
     style::Colorize,
     util,
 };
-use flate2::{read::GzDecoder, write::GzEncoder, Compression};
-use makedeb_srcinfo::SplitDependency;
+use flate2::read::GzDecoder;
 use rust_apt::{
     cache::{Cache as AptCache, PackageSort},
     progress::{AcquireProgress, InstallProgress},
+    tagfile::TagSection,
 };
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
-use std::{collections::HashMap, env, fs, io, process::Command, time::SystemTime};
+use std::{collections::HashMap, env, fs, io};
 
 ///////////////////////////
 // Stuff for MPR caches. //
@@ -53,6 +53,8 @@ pub struct MprPackage {
     pub checkdepends: Vec<MprDependencyGroup>,
     #[serde(rename = "Conflicts")]
     pub conflicts: Vec<MprDependencyGroup>,
+    #[serde(rename = "Provides")]
+    pub provides: Vec<MprDependencyGroup>,
 }
 
 impl MprPackage {
@@ -98,11 +100,16 @@ impl MprPackage {
         self.get_pkg_group(distro, arch, &self.conflicts)
     }
 
+    /// Get a list of provides packages for a specific distro/arch pair.
+    pub fn get_provides(&self, distro: Option<&str>, arch: Option<&str>) -> Option<Vec<String>> {
+        self.get_pkg_group(distro, arch, &self.provides)
+    }
+
     /// Get one of the above dependency vectors, looping through the order of
     /// specificity for distro-architecture variables used by makedeb.
-    fn get_system_pkgs(
+    fn get_system_pkgs<F: Fn(&Self, Option<&str>, Option<&str>) -> Option<Vec<String>>>(
         &self,
-        f: fn(&Self, Option<&str>, Option<&str>) -> Option<Vec<String>>,
+        f: F,
         distro: &str,
         arch: &str,
     ) -> Option<Vec<String>> {
@@ -112,10 +119,8 @@ impl MprPackage {
             Some(deps)
         } else if let Some(deps) = f(self, None, Some(arch)) {
             Some(deps)
-        } else if let Some(deps) = f(self, None, None) {
-            Some(deps)
         } else {
-            None
+            f(self, None, None)
         }
     }
 
@@ -140,6 +145,12 @@ impl MprPackage {
     /// specificity for distro-architecture variables used by makedeb.
     pub fn get_system_conflicts(&self, distro: &str, arch: &str) -> Option<Vec<String>> {
         self.get_system_pkgs(Self::get_conflicts, distro, arch)
+    }
+
+    /// Get the `provides` values of this package, looping through the order of
+    /// specificity for distro-architecture variables used by makedeb.
+    pub fn get_system_provides(&self, distro: &str, arch: &str) -> Option<Vec<String>> {
+        self.get_system_pkgs(Self::get_provides, distro, arch)
     }
 }
 
@@ -172,15 +183,15 @@ impl MprCache {
 
         let cache = match serde_json::from_str::<Vec<MprPackage>>(&file_json) {
             Ok(json) => json,
-            Err(err) => return Err(()),
+            Err(_) => return Err(()),
         };
 
-        return Ok(Self {
+        Ok(Self {
             packages: Self::vec_to_map(cache),
-        });
+        })
     }
 
-    pub fn new(mpr_url: &str) -> Self {
+    pub fn new() -> Self {
         // Try reading the cache file. If it doesn't exist or it's older than five
         // minutes, we have to update the cache file.
         let mut cache_file_path = util::xdg::get_global_cache_dir();
@@ -188,7 +199,7 @@ impl MprCache {
 
         match fs::read(cache_file_path.clone()) {
             Ok(file) => match Self::validate_data(&file) {
-                Ok(cache) => return cache,
+                Ok(cache) => cache,
                 Err(_) => {
                     message::error(&format!(
                         "There was an issue parsing the cache archive. Try running '{}'.\n",
@@ -472,21 +483,27 @@ impl Cache {
         }
 
         println!();
-        util::sudo::to_normal();
-
         // Clone MPR packages.
         //
         // We should be able to flatten the `mpr_pkgs` list to get this variable, but I
         // haven't gotten it to work yet. TODO: Make it work, duh.
-        let mut pkgs = Vec::new();
+        let mut flattened_pkgnames = vec![];
+        let mut flattened_pkgbases = vec![];
+        let mpr_pkgbases = install_util::pkgnames_to_pkgbases(self, mpr_pkgs);
 
         for vec in mpr_pkgs {
             for pkg in vec {
-                pkgs.push(pkg.as_str());
+                flattened_pkgnames.push(pkg.as_str());
             }
         }
 
-        install_util::clone_mpr_pkgs(&pkgs, mpr_url);
+        for vec in &mpr_pkgbases {
+            for pkg in vec {
+                flattened_pkgbases.push(pkg.as_str());
+            }
+        }
+
+        install_util::clone_mpr_pkgs(&flattened_pkgbases, mpr_url);
 
         // Review MPR packages.
 
@@ -503,57 +520,34 @@ impl Cache {
             }
         };
 
-        for pkg in pkgs {
+        for pkg in flattened_pkgbases {
             println!();
-            let mut review_files = true;
 
-            while review_files {
+            loop {
                 message::question(&format!("Review files for '{}'? [Y/n] ", pkg.green()));
                 io::stdout().flush().unwrap();
 
-                let mut response = String::new();
+                let mut resp = String::new();
                 io::stdin().read_line(&mut resp).unwrap();
                 resp.pop();
 
                 if !util::is_yes(&resp, true) {
-                    review_files = false;
                     break;
                 }
 
-                // Review every file except the `.SRCINFO` file.
-                // We don't need to recursively walk this directory as the MPR doesn't support
-                // Git repos with folders.
                 let mut cache_dir = util::xdg::get_cache_dir();
                 cache_dir.push("git-pkg");
                 cache_dir.push(pkg);
 
-                let mut cmd_args = vec![editor.clone()];
+                let mut cmd = util::sudo::run_as_normal_user(&editor);
+                cmd.arg("./");
 
-                for file_result in fs::read_dir(cache_dir).unwrap() {
-                    let file = file_result.unwrap();
-                    let file_name = file.file_name().into_string().unwrap();
-
-                    if vec![".git", ".SRCINFO"].contains(&file_name.as_str()) {
-                        continue;
-                    }
-
-                    // Panic if this path is a directory. The MPR doesn't allow that, and we got
-                    // something funky if we do.
-                    if file.file_type().unwrap().is_dir() {
-                        unreachable!();
-                    }
-
-                    // Now we can review the file.
-                    cmd_args.push(file_name);
-                }
-
-                let cmd = util::Command::new(cmd_args, false, None);
-                cmd.run();
+                let status = cmd.spawn().unwrap().wait().unwrap();
+                util::check_exit_status(&cmd, &status)
             }
         }
 
         // Install APT packages.
-        util::sudo::to_root();
         let mut updater: Box<dyn AcquireProgress> = Box::new(MistAcquireProgress {});
         if self.apt_cache().get_archives(&mut updater).is_err() {
             message::error("Failed to fetch needed archives\n");
@@ -575,48 +569,99 @@ impl Cache {
         let current_dir = env::current_dir().unwrap();
         let mut cache_dir = util::xdg::get_cache_dir();
         cache_dir.push("git-pkg");
-        util::sudo::to_normal();
 
-        for pkg_group in mpr_pkgs {
+        for pkg_group in mpr_pkgbases {
+            let mut debs = vec![];
+            // The list of packages to install; A Vector containing pkgname/version pairs.
+            let mut install_list: Vec<[String; 2]> = vec![];
+
             for pkg in pkg_group {
                 let mut git_dir = cache_dir.clone();
-                git_dir.push(pkg);
+                git_dir.push(pkg.clone());
                 env::set_current_dir(git_dir).unwrap();
 
                 // See this package has a control field value of 'MPR-Package'. If it does,
                 // don't add it to our arg list. TODO: We need to add this key
                 // to makedeb's .SRCINFO files.
                 let mpr_package_field = {
-                    let cmd = util::Command::new(
-                        vec!["bash", "-c", "source PKGBUILD; printf '%s\n' \"${control_fields[@]}\" | grep -q '^MPR-Package:'"],
-                        false,
-                        None
-                    );
-                    cmd.run().exit_status.success()
+                    let mut cmd = util::sudo::run_as_normal_user("bash");
+                    cmd.arg("-c");
+                    cmd.arg("source PKGBUILD; printf '%s\n' \"${control_fields[@]}\" | grep -q '^MPR-Package:'");
+                    cmd.output().unwrap().status.success()
                 };
 
-                let mut cmd_args = vec!["makedeb", "-si"];
+                let mut cmd = util::sudo::run_as_normal_user("makedeb");
 
                 if !mpr_package_field {
-                    cmd_args.push("-H");
-                    cmd_args.push("MPR-Package: yes");
+                    cmd.arg("-H");
+                    cmd.arg("MPR-Package: yes");
                 }
 
                 message::info(&format!("Running makedeb for '{}'...\n", pkg.green()));
-                if !util::Command::new(cmd_args, false, None)
-                    .run()
-                    .exit_status
-                    .success()
-                {
+                if !cmd.spawn().unwrap().wait().unwrap().success() {
                     message::error("Failed to run makedeb.\n");
                     quit::with_code(exitcode::UNAVAILABLE);
                 }
 
+                // Get the list of '.deb' files that were built.
+                for dir in fs::read_dir("./pkg").unwrap() {
+                    let mut path = dir.unwrap().path();
+                    path.push("DEBIAN");
+                    path.push("control");
+                    let control_file =
+                        TagSection::new(&fs::read_to_string(&path).unwrap()).unwrap();
+
+                    // Only add this deb for installation if the user asked for it to be installed.
+                    let pkgname = control_file.get("Package").unwrap();
+                    let version = control_file.get("Version").unwrap();
+                    let arch = control_file.get("Architecture").unwrap();
+
+                    if flattened_pkgnames.contains(&pkgname.as_str()) {
+                        debs.push(format!("{}_{}_{}.deb", pkgname, version, arch));
+                    }
+
+                    install_list.push([
+                        pkgname.to_string(),
+                        control_file.get("Version").unwrap().to_string(),
+                    ]);
+                }
+
                 env::set_current_dir(&current_dir).unwrap();
             }
-        }
 
-        util::sudo::to_root();
+            // Convert the debs into the format required by the
+            // [`rust_apt::cache::Cache::debs`] initializer.
+            let mut debs_as_str = vec![];
+            for deb in &debs {
+                debs_as_str.push(deb.as_str());
+            }
+
+            // Install the packages.
+            let deb_cache = AptCache::debs(&debs_as_str).unwrap();
+
+            for pkg in &install_list {
+                let cache_pkg = deb_cache.get(&pkg[0]).unwrap();
+                let version = cache_pkg.get_version(&pkg[1]).unwrap();
+                version.set_candidate();
+                assert!(cache_pkg.mark_install(false, true));
+                cache_pkg.protect();
+            }
+
+            if let Err(err) = deb_cache.resolve(true) {
+                util::handle_errors(&err);
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+
+            if deb_cache.get_archives(&mut updater).is_err() {
+                message::error("Failed to fetch needed archives\n");
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+
+            if let Err(err) = deb_cache.do_install(&mut installer) {
+                util::handle_errors(&err);
+                quit::with_code(exitcode::UNAVAILABLE);
+            }
+        }
     }
 
     /// Get a reference to the generated pkglist (contains a combined APT+MPR

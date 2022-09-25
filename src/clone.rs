@@ -7,7 +7,7 @@ use rust_apt::cache::Cache as AptCache;
 pub fn clone(args: &clap::ArgMatches) {
     let pkg: &String = args.get_one("pkg").unwrap();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let cache = Cache::new(AptCache::new(), MprCache::new(mpr_url));
+    let cache = Cache::new(AptCache::new(), MprCache::new());
     let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of package bases.
@@ -42,8 +42,9 @@ pub fn clone(args: &clap::ArgMatches) {
 
     // Clone the package.
     let pkg_url = format!("{}/{}", mpr_url, pkg);
-    let cmd = util::Command::new(vec!["git", "clone", &pkg_url], false, None);
-    let exit_code = cmd.run().exit_status;
+    let mut cmd = util::sudo::run_as_normal_user("git");
+    cmd.args(["clone", &pkg_url]);
+    let exit_code = cmd.output().unwrap().status;
 
     if !exit_code.success() {
         message::error("Failed to clone package.\n");

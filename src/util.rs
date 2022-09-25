@@ -1,16 +1,16 @@
 use crate::{apt_util, message, style::Colorize};
+use core::fmt::Display;
+use lazy_static::lazy_static;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
-    env, fs as std_fs,
+    ffi::OsStr,
+    fs as std_fs,
     io::{self, Write},
     path,
-    process::{Command as ProcCommand, ExitStatus, Stdio},
+    process::{Command as ProcCommand, ExitStatus},
     str,
 };
-
-use core::cmp::Ordering;
-use core::fmt::Display;
-use regex::Regex;
 
 #[derive(Deserialize, Serialize)]
 struct AuthenticationError {
@@ -79,89 +79,6 @@ impl<'a> AuthenticatedRequest<'a> {
     }
 }
 
-// Structs and functions to run a command, and abort if it fails.
-pub struct CommandResult {
-    pub stdout: Vec<u8>,
-    pub stderr: Vec<u8>,
-    pub exit_status: ExitStatus,
-}
-
-pub struct Command<'a> {
-    args: Vec<String>,
-    capture: bool,
-    stdin: Option<&'a str>,
-}
-
-impl<'a> Command<'a> {
-    pub fn new<T: AsRef<str>>(args: Vec<T>, capture: bool, stdin: Option<&'a str>) -> Self {
-        let mut unref_args = Vec::new();
-
-        for arg in args {
-            unref_args.push(arg.as_ref().to_string());
-        }
-
-        Self {
-            args: unref_args,
-            capture,
-            stdin,
-        }
-    }
-
-    pub fn run(&self) -> CommandResult {
-        let cmd_name = self.args.first().unwrap();
-        let cmd_args = &self.args[1..];
-        // Functions like 'ProcCommand::stdin()' return references to the object created
-        // by 'ProcCommand::new()', which returns the object itself.
-        // We want to only interact with references to the object from hereon out.
-        let mut _result = ProcCommand::new(cmd_name);
-        let mut result = &mut _result;
-        result = result.args(cmd_args);
-
-        // If we passed in stdin, set up the command to accept it.
-        if self.stdin.is_some() {
-            result = result.stdin(Stdio::piped());
-        }
-
-        // Take in stdout and stderr if needed.
-        if self.capture {
-            result = result.stdout(Stdio::piped());
-            result = result.stderr(Stdio::piped());
-        }
-
-        // Start the subprocess.
-        let mut result = match result.spawn() {
-            Ok(child) => child,
-            Err(err) => {
-                message::error(&format!(
-                    "Failed to run command. [{:?}] [{}]\n",
-                    self.args, err
-                ));
-                quit::with_code(exitcode::UNAVAILABLE);
-            }
-        };
-
-        // If we passed in stdin previously, pass in our stdin.
-        if let Some(stdin) = self.stdin {
-            result
-                .stdin
-                .take()
-                .unwrap()
-                .write_all(stdin.as_bytes())
-                .unwrap();
-        }
-
-        // Wait for the command to exit.
-        let prog_exit = result.wait_with_output().unwrap();
-
-        // Return the result.
-        CommandResult {
-            stdout: prog_exit.stdout,
-            stderr: prog_exit.stderr,
-            exit_status: prog_exit.status,
-        }
-    }
-}
-
 /// Handle errors from APT.
 pub fn handle_errors(err_str: &apt_util::Exception) {
     for msg in err_str.what().split(';') {
@@ -170,6 +87,19 @@ pub fn handle_errors(err_str: &apt_util::Exception) {
         } else if msg.starts_with("W:") {
             message::warning(&format!("{}\n", msg.strip_prefix("W:").unwrap()));
         };
+    }
+}
+
+/// Run a command, and error out if it fails.
+pub fn check_exit_status(cmd: &ProcCommand, status: &ExitStatus) {
+    if !status.success() {
+        let mut args = vec![cmd.get_program().to_str().unwrap().to_string()];
+        for arg in cmd.get_args() {
+            args.push(arg.to_str().unwrap().to_string());
+        }
+
+        message::error(&format!("Failed to run command: {:?}\n", args));
+        quit::with_code(exitcode::UNAVAILABLE);
     }
 }
 
@@ -312,43 +242,19 @@ pub fn ask_question(question: &str, options: &Vec<&str>, multi_allowed: bool) ->
 /// Get the system's distro and architecture. The first value returned is the
 /// distribution, and the second is the architecture.
 pub fn get_distro_arch_info() -> (String, String) {
-    let distro_cmd = Command::new(vec!["lsb_release", "-cs"], true, None).run();
-    let arch_cmd = Command::new(vec!["dpkg", "--print-architecture"], true, None).run();
+    let mut distro_cmd = ProcCommand::new("lsb_release");
+    distro_cmd.arg("-cs");
+    let mut arch_cmd = ProcCommand::new("dpkg");
+    arch_cmd.arg("--print-architecture");
 
-    let distro = std::str::from_utf8(&distro_cmd.stdout).unwrap().to_owned();
-    let arch = std::str::from_utf8(&arch_cmd.stdout).unwrap().to_owned();
+    let distro = std::str::from_utf8(&distro_cmd.output().unwrap().stdout)
+        .unwrap()
+        .to_owned();
+    let arch = std::str::from_utf8(&arch_cmd.output().unwrap().stdout)
+        .unwrap()
+        .to_owned();
 
     (distro, arch)
-}
-
-/// Get the system's user ID and username that are present from sudo. The first
-/// value returned is the user ID, and the second is the username.
-pub fn get_sudo_base_user() -> Option<(u32, String)> {
-    let sudo_uid = match env::var("SUDO_UID") {
-        Ok(uid) => Some(uid.parse::<u32>().unwrap()),
-        Err(_) => None,
-    };
-    let sudo_username = env::var("SUDO_USER").ok();
-
-    if sudo_uid.is_none() || sudo_username.is_none() {
-        None
-    } else {
-        Some((sudo_uid.unwrap(), sudo_username.unwrap()))
-    }
-}
-
-/// Check if a version matches requirements.
-pub fn check_version_requirement(ver1: &str, operator: &str, ver2: &str) -> bool {
-    let ver_result = apt_util::cmp_versions(ver1, ver2);
-
-    match operator {
-        "<<" => ver_result == Ordering::Less,
-        "<=" => vec![Ordering::Less, Ordering::Equal].contains(&ver_result),
-        "=" => ver_result == Ordering::Equal,
-        ">=" => vec![Ordering::Equal, Ordering::Greater].contains(&ver_result),
-        ">>" => ver_result == Ordering::Greater,
-        _ => panic!("Invalid operator '{}' passed in.", operator),
-    }
 }
 
 /// XDG directory wrapper thingermabobers.
@@ -390,7 +296,7 @@ pub mod fs {
     pub fn create_dir(directory: &str) {
         let path = super::path::Path::new(directory);
         if !path.exists() {
-            if super::std_fs::create_dir_all(&path).is_err() {
+            if super::std_fs::create_dir_all(path).is_err() {
                 super::message::error(&format!(
                     "Failed to create directory ({}).\n",
                     directory.green().bold()
@@ -401,18 +307,6 @@ pub mod fs {
             super::message::error(&format!(
                 "Path '{}' needs to be a directory, but it isn't.\n",
                 directory.green().bold()
-            ));
-            quit::with_code(exitcode::UNAVAILABLE);
-        }
-    }
-
-    /// Remove a folder recursively, abourting if unable to.
-    pub fn remove_dir_all(directory: &str) {
-        if let Err(err) = super::std_fs::remove_dir_all(directory) {
-            super::message::error(&format!(
-                "Failed to remove directory '{}' [{}].\n",
-                directory.bold().green(),
-                err.to_string().bold()
             ));
             quit::with_code(exitcode::UNAVAILABLE);
         }
@@ -436,13 +330,43 @@ pub mod fs {
 
 /// Sudo user management stuff.
 pub mod sudo {
+    super::lazy_static! {
+        static ref NORMAL_UID: u32 = users::get_current_uid();
+    }
+
     /// Change the user to root.
     pub fn to_root() {
+        // Make sure the deref is ran on `normal` uid so that it's properly registered.
+        let _ = *self::NORMAL_UID;
+
         users::switch::set_effective_uid(0).unwrap();
+        users::switch::set_current_uid(0).unwrap();
+    }
+
+    pub fn check_perms() {
+        super::message::info("Obtaining root permissions...\n");
+
+        let mut cmd = self::run_as_normal_user("sudo");
+        cmd.arg("true");
+
+        if !cmd.spawn().unwrap().wait().unwrap().success() {
+            super::message::error("Couldn't obtain root permissions.\n");
+            quit::with_code(exitcode::USAGE);
+        }
     }
 
     /// Change the user to the non-root user.
-    pub fn to_normal() {
-        users::switch::set_effective_uid(users::get_current_uid()).unwrap();
+    // pub fn to_normal() {
+    //     users::switch::set_effective_uid(*self::NORMAL_UID).unwrap();
+    // }
+
+    // Run a command as the normal user declared by [`NORMAL_UID`].
+    pub fn run_as_normal_user<P: AsRef<super::OsStr>>(program: P) -> super::ProcCommand {
+        let mut cmd = super::ProcCommand::new("sudo");
+        cmd.args(["-E", "-n"]);
+        cmd.arg(format!("-u#{}", *self::NORMAL_UID));
+        cmd.arg("--");
+        cmd.arg(program);
+        cmd
     }
 }

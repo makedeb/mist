@@ -16,7 +16,7 @@ pub fn remove(args: &clap::ArgMatches) {
     let purge = args.is_present("purge");
     let autoremove = args.is_present("autoremove");
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let cache = Cache::new(AptCache::new(), MprCache::new(mpr_url));
+    let cache = Cache::new(AptCache::new(), MprCache::new());
 
     // Lock the cache.
     if let Err(err) = apt_util::apt_lock() {

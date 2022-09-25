@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2022-09-25
+### Added
+- Added `install` command.
+- Added `upgrade` command.
+
 ## [0.9.0] - 2022-08-15
 ### Added
 - Added `remove` command.

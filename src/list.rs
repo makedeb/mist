@@ -13,9 +13,8 @@ pub fn list(args: &clap::ArgMatches) {
     let mpr_only = args.is_present("mpr-only");
     let installed_only = args.is_present("installed-only");
     let name_only = args.is_present("name-only");
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
 
-    let cache = Cache::new(AptCache::new(), MprCache::new(mpr_url));
+    let cache = Cache::new(AptCache::new(), MprCache::new());
     let mut candidates: Vec<&Vec<CachePackage>> = Vec::new();
 
     if !pkglist.is_empty() {

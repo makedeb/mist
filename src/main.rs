@@ -8,17 +8,16 @@ mod list;
 mod list_comments;
 mod message;
 mod progress;
-mod quick_list;
 mod remove;
 mod search;
 mod style;
 mod update;
+mod upgrade;
 mod util;
 mod whoami;
 
-pub use rust_apt::util as apt_util;
-
 use clap::{self, Arg, Command, PossibleValue};
+pub use rust_apt::util as apt_util;
 use std::{
     env,
     fs::File,
@@ -119,7 +118,6 @@ fn get_cli() -> Command<'static> {
             .arg(apt_only_arg.clone())
             .arg(installed_only_arg.clone())
             .arg(name_only_arg.clone())
-            .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("list-comments")
@@ -142,19 +140,6 @@ fn get_cli() -> Command<'static> {
                             PossibleValue::new("never")
                         ])
                 )
-                .arg(mpr_url_arg.clone())
-        )
-        .subcommand(
-            Command::new("quick-list")
-                .about("List available packages quickly for shell completions")
-                .hide(true)
-                .arg(
-                    Arg::new("prefix")
-                        .help("The prefix to limit output to")
-                        .required(true)
-                )
-                .arg(mpr_only_arg.clone().conflicts_with("mpr-only"))
-                .arg(apt_only_arg.clone().conflicts_with("apt-only"))
                 .arg(mpr_url_arg.clone())
         )
         .subcommand(
@@ -192,11 +177,17 @@ fn get_cli() -> Command<'static> {
                 .arg(apt_only_arg.clone())
                 .arg(installed_only_arg.clone())
                 .arg(name_only_arg.clone())
-                .arg(mpr_url_arg.clone())
         )
         .subcommand(
             Command::new("update")
                 .about("Update the APT cache on the system")
+                .arg(mpr_url_arg.clone())
+        )
+        .subcommand(
+            Command::new("upgrade")
+                .about("Upgrade the packages on the system")
+                .arg(Arg::new("apt-only").help("Only upgrade APT packages").long("apt-only").conflicts_with("mpr-only"))
+                .arg(Arg::new("mpr-only").help("Only upgrade MPR packages").long("mpr-only").conflicts_with("apt-only"))
                 .arg(mpr_url_arg.clone())
         )
         .subcommand(
@@ -211,56 +202,47 @@ fn get_cli() -> Command<'static> {
 fn main() {
     let cmd_results = get_cli().get_matches();
 
-    // If we're performing an operation where the executable needs to run with
-    // `setuid` functionality, make sure that this executable has the `setuid` flag
-    // set and is owned by root. Other parts of this program (intentionally)
-    // expect such behavior due to how we've designed this program to work. For
-    // some reason we need to pass a type to `env::args().collect()`, not sure
-    // if we for sure need it though.
-    // if ["install", "upgrade"].contains(&cmd_results.subcommand().unwrap().0) {
-    //     let cmd_name = {
-    //         let cmd = env::args().collect::<Vec<String>>().remove(0);
-    //         if cmd.contains('/') {
-    //             cmd
-    //         } else {
-    //             which(cmd).unwrap().into_os_string().into_string().unwrap()
-    //         }
-    //     };
+    // Make sure that this executable has the `setuid` flag set and is owned by
+    // root. Parts of this program (intentionally) expect such behavior.
+    let cmd_name = {
+        let cmd = env::args().collect::<Vec<String>>().remove(0);
+        if cmd.contains('/') {
+            cmd
+        } else {
+            which(cmd).unwrap().into_os_string().into_string().unwrap()
+        }
+    };
 
-    //     let cmd_metadata =
-    // File::open(cmd_name.clone()).unwrap().metadata().unwrap();
+    let cmd_metadata = File::open(cmd_name).unwrap().metadata().unwrap();
 
-    //     // Make sure `root` owns the executable.
-    //     if cmd_metadata.st_uid() != 0 {
-    //         message::error("This executable needs to be owned by `root` in order
-    // to function.\n");         quit::with_code(exitcode::USAGE);
-    //     // Make sure the `setuid` bit flag is set. This appears to be third
-    //     // digit in the six-digit long mode returned.
-    //     } else if format!("{:o}", cmd_metadata.permissions().mode())
-    //         .chars()
-    //         .nth(2)
-    //         .unwrap()
-    //         .to_string()
-    //         .parse::<u8>()
-    //         .unwrap()
-    //         < 4
-    //     {
-    //         message::error(
-    //             "This executable needs to have the `setuid` bit flag set in order
-    // to function.\n",         );
-    //         quit::with_code(exitcode::USAGE);
-    //     }
-    // }
+    // Make sure `root` owns the executable.
+    if cmd_metadata.st_uid() != 0 {
+        message::error("This executable needs to be owned by `root` in order to run.\n");
+        quit::with_code(exitcode::USAGE);
+    // Make sure the `setuid` bit flag is set. This appears to be third
+    // digit in the six-digit long mode returned.
+    } else if format!("{:o}", cmd_metadata.permissions().mode())
+        .chars()
+        .nth(2)
+        .unwrap()
+        .to_string()
+        .parse::<u8>()
+        .unwrap()
+        < 4
+    {
+        message::error(
+            "This executable needs to have the `setuid` bit flag set in order to run command.\n",
+        );
+        quit::with_code(exitcode::USAGE);
+    }
 
-    // // If we're performing an operation where root permissions are needed, make
-    // sure // we got them.
-    // if ["install", "update", "update",
-    // "remove"].contains(&cmd_results.subcommand().unwrap().0)
-    //     && users::get_effective_uid() != 0
-    // {
-    //     message::error("This command needs to be ran as root in order to
-    // function.");     quit::with_code(exitcode::USAGE);
-    // }
+    util::sudo::to_root();
+
+    // If we're running a command that should be permission-checked, then do so.
+    if vec!["install", "remove", "update", "upgrade"].contains(&cmd_results.subcommand().unwrap().0)
+    {
+        util::sudo::check_perms();
+    }
 
     match cmd_results.subcommand() {
         Some(("clone", args)) => clone::clone(args),
@@ -268,10 +250,10 @@ fn main() {
         Some(("install", args)) => install::install(args),
         Some(("list", args)) => list::list(args),
         Some(("list-comments", args)) => list_comments::list_comments(args),
-        Some(("quick-list", args)) => quick_list::quick_list(args),
         Some(("remove", args)) => remove::remove(args),
         Some(("search", args)) => search::search(args),
         Some(("update", args)) => update::update(args),
+        Some(("upgrade", args)) => upgrade::upgrade(args),
         Some(("whoami", args)) => whoami::whoami(args),
         _ => unreachable!(),
     };

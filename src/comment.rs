@@ -21,7 +21,7 @@ pub fn comment(args: &clap::ArgMatches) {
     };
 
     // Get a list of packages.
-    let mpr_cache = MprCache::new(mpr_url);
+    let mpr_cache = MprCache::new();
     let mut pkgnames: Vec<&String> = Vec::new();
 
     for pkg in mpr_cache.packages().values() {
@@ -67,8 +67,10 @@ pub fn comment(args: &clap::ArgMatches) {
             // Open the file in the editor.
             message::info(&format!("Opening '{}' in '{}'...\n", &file, editor));
 
-            let cmd = util::Command::new(vec![&editor, &file], false, None);
-            cmd.run();
+            let mut cmd = util::sudo::run_as_normal_user(&editor);
+            cmd.arg(&file);
+            let status = cmd.spawn().unwrap().wait().unwrap();
+            util::check_exit_status(&cmd, &status);
 
             // Read the changed file.
             let mut file_content = String::new();

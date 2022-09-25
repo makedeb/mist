@@ -7,6 +7,7 @@ arch=('any')
 depends=(
     'libapt-pkg-dev'
     'libssl-dev'
+    'sudo'
 )
 optdepends=(
     'r!less'

@@ -1,5 +1,11 @@
 _mist_get_pkglist() {
-    mapfile -t COMPREPLY < <("${words[0]}" quick-list "${@}")
+    if ! printf '%s\n' "${@}" "${words[@]}" | grep -q -- '--mpr-only' || ! printf '%s\n' "${opts[@]}" | grep -q -- '--mpr-only'; then
+        mapfile -t COMPREPLY < <(apt-cache --no-generate pkgnames "${@: -1}")
+    fi
+
+    if ([[ -f '/var/cache/mist/pkglist.gz' ]] && ! printf '%s\n' "${@}" "${words[@]}" | grep -q -- '--apt-only') || ! printf '%s\n' "${opts[@]}" | grep -q -- '--apt-only'; then
+        mapfile -O "${#COMPREPLY[@]}" -t COMPREPLY < <(gzip -cd '/var/cache/mist/pkglist.gz' | grep "^${@: -1}")
+    fi
 }
 
 _mist_gen_compreply() {
@@ -22,10 +28,13 @@ _mist() {
         'clone'
         'comment'
         'help'
+        'install'
+        'list'
         'list-comments'
         'remove'
         'search'
         'update'
+        'upgrade'
         'whoami'
     )
 
@@ -80,6 +89,26 @@ _mist() {
             ;;
         help)
             return
+            ;;
+        install)
+            opts=('--mpr-url')
+
+            case "${prev}" in
+                --mpr-url)
+                return
+                ;;
+            esac
+
+            case "${cur}" in
+                -*)
+                    _mist_gen_compreply '${opts[@]}' "${cur}"
+                    return
+                    ;;
+                *)
+                    _mist_pkg_specified_check "${cur}"
+                    return
+                    ;;
+            esac
             ;;
         list-comments)
             opts=('--mpr-url' '--paging')
@@ -141,8 +170,32 @@ _mist() {
                     ;;
             esac
             ;;
+        update)
+            opts=('--mpr-url')
+
+            case "${prev}" in
+                --mpr-url)
+                    return
+                    ;;
+            esac
+
+            _mist_gen_compreply '${opts[@]}' "${cur}"
+            return
+            ;;
+        upgrade)
+            opts=('--apt-only' '--mpr-only' '--mpr-url')
+
+            case "${prev}" in
+                --mpr-url)
+                    return
+                    ;;
+            esac
+
+            _mist_gen_compreply '${opts[@]}' "${cur}"
+            return
+            ;;
         whoami)
-        opts=('--token' '--mpr-url')
+            opts=('--token' '--mpr-url')
 
             case "${prev}" in
                 --token|--mpr-url)

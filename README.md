@@ -1,5 +1,15 @@
 # Mist
-This is the repository for Mist, the official helper for the makedeb Package Repository.
+This is the repository for Mist, the official command-line interface for the makedeb Package Repository.
+
+Mist makes it easier for users to interact with the MPR in a variety of ways. Some of its most notable features include:
+
+- Functioning as a wrapper around APT, adding in MPR functionality such as:
+- - The ability to install, upgrade, and remove both APT and MPR packages.
+- - Automatic dependency resolution for packages from the MPR, as well as APT.
+- - Searching and listing both APT and MPR packages.
+- Cloning packages from the MPR.
+- Listing comments for packages from the MPR.
+- Commenting packages from the MPR.
 
 [![Latest deployment status](https://img.shields.io/drone/build/makedeb/mist?logo=drone&server=https%3A%2F%2Fdrone.hunterwittenborn.com)](https://drone.hunterwittenborn.com/makedeb/mist/latest)
 
@@ -7,7 +17,7 @@ This is the repository for Mist, the official helper for the makedeb Package Rep
 Users have a few options for installing Mist:
 
 ### From the Prebuilt-MPR
-This is the recommended way to install Mist. It avoids the need to compile any software, allows for automatic upgrades via APT, and gets you set up in just a couple of minutes.
+This is the recommended way to install Mist. It avoids the need to compile any software, allows for automatic upgrades via APT (and Mist once it's installed), and gets you set up in just a couple of minutes.
 
 First, [set up the Prebuilt-MPR on your system](https://docs.makedeb.org/prebuilt-mpr/getting-started), then just run the following to install Mist:
 

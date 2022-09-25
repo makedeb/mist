@@ -9,7 +9,7 @@ use rust_apt::cache::Cache as AptCache;
 pub fn install(args: &clap::ArgMatches) {
     let pkglist: Vec<&String> = args.get_many("pkg").unwrap().collect();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let cache = Cache::new(AptCache::new(), MprCache::new(mpr_url));
+    let cache = Cache::new(AptCache::new(), MprCache::new());
 
     // Package sources.
     let mut apt_pkgs: Vec<&str> = Vec::new();

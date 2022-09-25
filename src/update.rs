@@ -30,8 +30,21 @@ pub fn update(args: &clap::ArgMatches) {
         }
     };
 
-    // Get the new MPR cache.
+    // Get the new MPR pkglist.
     let client = reqwest::blocking::Client::new();
+    match client.get(format!("{}/packages.gz", mpr_url)).send() {
+        Ok(resp) => {
+            let mut cache_dir = util::xdg::get_global_cache_dir();
+            cache_dir.push("pkglist.gz");
+            fs::write(&cache_dir, resp.bytes().unwrap()).unwrap();
+        }
+        Err(err) => {
+            message::error(&format!("Failed to make request [{}]\n", err));
+            quit::with_code(exitcode::UNAVAILABLE);
+        }
+    };
+
+    // Get the new MPR cache.
     let resp = match client
         .get(format!("{}/packages-meta-ext-v2.json.gz", mpr_url))
         .send()
@@ -113,14 +126,15 @@ pub fn update(args: &clap::ArgMatches) {
             pkg.get_system_depends(&system_distro, &system_arch),
             pkg.get_system_makedepends(&system_distro, &system_arch),
             pkg.get_system_checkdepends(&system_distro, &system_arch),
-        ] {
-            if let Some(mut deps) = dep_group {
-                for dep in deps {
-                    if let Some(no_prefix_string) = dep.strip_prefix("p!") {
-                        predepends.push(no_prefix_string.to_string());
-                    } else {
-                        depends.push(dep);
-                    }
+        ]
+        .into_iter()
+        .flatten()
+        {
+            for dep in dep_group {
+                if let Some(no_prefix_string) = dep.strip_prefix("p!") {
+                    predepends.push(no_prefix_string.to_string());
+                } else {
+                    depends.push(dep);
                 }
             }
         }
@@ -162,13 +176,24 @@ pub fn update(args: &clap::ArgMatches) {
             control_file_str.push_str(&format!("Conflicts: {}\n", &conflicts_items));
         }
 
+        if let Some(provides) = pkg.get_system_provides(&system_distro, &system_arch) {
+            let mut provides_items = String::new();
+
+            for provide in provides {
+                provides_items.push_str(&SplitDependency::new(&provide).as_control());
+                provides_items.push_str(", ");
+            }
+            provides_items.pop().unwrap();
+            provides_items.pop().unwrap();
+
+            control_file_str.push_str(&format!("Provides: {}\n", &provides_items));
+        }
+
         // Write the control file.
         let control_file_dir = pkg.pkgname.clone() + "/DEBIAN";
         util::fs::create_dir(&control_file_dir);
         let mut control_file = util::fs::create_file(&(control_file_dir.clone() + "/control"));
-        control_file
-            .write(&control_file_str.as_bytes().to_vec())
-            .unwrap();
+        control_file.write_all(control_file_str.as_bytes()).unwrap();
 
         // Build the package.
         let clear_line = || {
