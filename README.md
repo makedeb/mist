@@ -33,8 +33,10 @@ To install from source, run the following:
 ```sh
 git clone 'https://mpr.makedeb.org/mist'
 cd mist/
-makedeb -si
+makedeb -si -H 'MPR-Package: yes'
 ```
+
+> If you install from the MPR and omit `-H 'MPR-Package: yes'`, Mist will be **unable to update itself**.
 
 > Mist currently requires the nightly version of the Rust compiler toolchain in order to build. To build it locally, it's recommended to use [rustup](https://rustup.rs), which will automatically manage and update the nightly toolchain on your local system. If preferred, rustup can be installed from the [MPR](https://mpr.makedeb.org/packages/rustup) or the Prebuilt-MPR.
 
