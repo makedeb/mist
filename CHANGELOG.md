@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2022-09-25
+### Fixed
+- Ensure cache directories exist before they're used.
+
 ## [0.9.3] - 2022-09-25
 ### Fixed
 - Add `postinst` script during deployments.

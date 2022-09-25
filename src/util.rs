@@ -259,31 +259,20 @@ pub fn get_distro_arch_info() -> (String, String) {
 
 /// XDG directory wrapper thingermabobers.
 pub mod xdg {
-    /// Return the cache directory, which also creating it if it doesn't exist.
+    /// Return the cache directory. Also creates it if it doesn't exist.
     pub fn get_cache_dir() -> super::path::PathBuf {
         let mut cache_dir = dirs::cache_dir().unwrap();
         cache_dir.push("mist");
-
-        if !cache_dir.exists() {
-            if super::std_fs::create_dir_all(&cache_dir).is_err() {
-                super::message::error(&format!(
-                    "Failed to create directory for cache directory ({}).",
-                    cache_dir.display()
-                ));
-            }
-        } else if !cache_dir.is_dir() {
-            super::message::error(&format!(
-                "Config directory path '{}' needs to be a directory, but it isn't.",
-                cache_dir.display()
-            ));
-        }
-
+        super::fs::create_dir(&cache_dir.clone().into_os_string().into_string().unwrap());
         cache_dir
     }
 
-    /// Return the global cache directory, for use by all users.
+    /// Return the global cache directory that's for use by all users. Also
+    /// creates it if it doesn't exist.
     pub fn get_global_cache_dir() -> super::path::PathBuf {
-        ["/var", "cache", "mist"].iter().collect()
+        let path: super::path::PathBuf = ["/var", "cache", "mist"].iter().collect();
+        super::fs::create_dir(&path.clone().into_os_string().into_string().unwrap());
+        path
     }
 }
 
