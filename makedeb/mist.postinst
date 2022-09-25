@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+chown 'root:root' /usr/bin/mist
+chmod a+s /usr/bin/mist

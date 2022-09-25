@@ -36,6 +36,7 @@ pub fn update(args: &clap::ArgMatches) {
         Ok(resp) => {
             let mut cache_dir = util::xdg::get_global_cache_dir();
             cache_dir.push("pkglist.gz");
+            util::fs::create_file(&cache_dir.clone().into_os_string().into_string().unwrap());
             fs::write(&cache_dir, resp.bytes().unwrap()).unwrap();
         }
         Err(err) => {
@@ -229,5 +230,6 @@ pub fn update(args: &clap::ArgMatches) {
     // Write the archive file.
     cache_dir.pop();
     cache_dir.push("cache.gz");
+    util::fs::create_file(&cache_dir.clone().into_os_string().into_string().unwrap());
     fs::write(&cache_dir, resp).unwrap();
 }

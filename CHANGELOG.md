@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2022-09-25
+### Fixed
+- Add `postinst` script to set permissions on executable in installed package.
+- Ensure MPR cache files exist before trying to write to them.
+
 ## [0.9.1] - 2022-09-25
 ### Fixed
 - Allow passing the `NO_SUDO` environment variable to builds.
