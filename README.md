@@ -16,7 +16,7 @@ Mist makes it easier for users to interact with the MPR in a variety of ways. So
 ## Installation
 Users have a few options for installing Mist:
 
-### From the Prebuilt-MPR
+### From the Prebuilt-MPR (Recommended)
 This is the recommended way to install Mist. It avoids the need to compile any software, allows for automatic upgrades via APT (and Mist once it's installed), and gets you set up in just a couple of minutes.
 
 First, [set up the Prebuilt-MPR on your system](https://docs.makedeb.org/prebuilt-mpr/getting-started), then just run the following to install Mist:
