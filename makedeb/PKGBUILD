@@ -1,6 +1,6 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
 pkgname=mist
-pkgver=0.9.0
+pkgver=0.9.1
 pkgrel=1
 pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')

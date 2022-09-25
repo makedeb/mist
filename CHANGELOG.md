@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2022-09-25
+### Fixed
+- Allow passing the `NO_SUDO` environment variable to builds.
+
 ## [0.9.0] - 2022-09-25
 ### Added
 - Added `install` command.

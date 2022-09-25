@@ -1,6 +1,7 @@
 #!/usr/bin/env -S just --justfile
 set positional-arguments
 export CARGO_RELEASE := ""
+export NO_SUDO := ""
 
 default:
     @just --list
