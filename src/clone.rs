@@ -1,39 +1,40 @@
-use crate::{cache::MprCache, message, util};
+use crate::{
+    cache::{Cache, MprCache},
+    message, util,
+};
+use rust_apt::cache::Cache as AptCache;
 
 pub fn clone(args: &clap::ArgMatches) {
     let pkg: &String = args.get_one("pkg").unwrap();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let mpr_cache = MprCache::new(mpr_url);
-
+    let cache = Cache::new(AptCache::new(), MprCache::new());
     let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of package bases.
-    for pkg in &mpr_cache.packages {
+    for pkg in cache.mpr_cache().packages().values() {
         pkgbases.push(&pkg.pkgbase);
     }
 
     // Abort if the package base doesn't exist.
     if !pkgbases.contains(&pkg) {
-        message::error(&format!("Package base '{}' doesn't exist on the MPR.", pkg));
+        message::error(&format!(
+            "Package base '{}' doesn't exist on the MPR.\n",
+            pkg
+        ));
 
-        // If there's a pkgbase that builds this package, guide the user to clone that package
-        // instead.
-        let pkgbase = util::find_pkgbase(pkg, &mpr_cache);
-
-        match pkgbase {
-            Some(pkgbase) => {
-                message::error(
-                    &format!(
-                        "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:",
-                        pkgbase,
-                        &pkg
-                    )
-                );
-
-                message::error(&format!("    {} clone '{}'", clap::crate_name!(), pkgbase));
-            }
-
-            None => (),
+        // If there's a pkgbase that builds this package, guide the user to clone that
+        // package instead.
+        if let Some(pkgbase) = cache.find_pkgbase(pkg) {
+            message::error(&format!(
+                "Package base '{}' exists on the MPR though, which builds '{}'. You probably want to clone that instead:\n",
+                pkgbase,
+                &pkg
+            ));
+            message::error(&format!(
+                "    {} clone '{}'\n",
+                clap::crate_name!(),
+                pkgbase
+            ));
         }
 
         quit::with_code(exitcode::USAGE);
@@ -41,15 +42,12 @@ pub fn clone(args: &clap::ArgMatches) {
 
     // Clone the package.
     let pkg_url = format!("{}/{}", mpr_url, pkg);
-    let cmd = util::CommandInfo {
-        args: &vec!["git", "clone", &pkg_url],
-        capture: false,
-        stdin: None,
-    };
-    let exit_code = util::run_command(&cmd).exit_status;
+    let mut cmd = util::sudo::run_as_normal_user("git");
+    cmd.args(["clone", &pkg_url]);
+    let exit_code = cmd.output().unwrap().status;
 
     if !exit_code.success() {
-        message::error("Failed to clone package.");
+        message::error("Failed to clone package.\n");
         quit::with_code(exitcode::UNAVAILABLE);
     };
 }

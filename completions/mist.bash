@@ -1,5 +1,11 @@
 _mist_get_pkglist() {
-    mapfile -t opts < <("${words[0]}" pkglist)
+    if ! printf '%s\n' "${@}" "${words[@]}" | grep -q -- '--mpr-only' || ! printf '%s\n' "${opts[@]}" | grep -q -- '--mpr-only'; then
+        mapfile -t COMPREPLY < <(apt-cache --no-generate pkgnames "${@: -1}")
+    fi
+
+    if ([[ -f '/var/cache/mist/pkglist.gz' ]] && ! printf '%s\n' "${@}" "${words[@]}" | grep -q -- '--apt-only') || ! printf '%s\n' "${opts[@]}" | grep -q -- '--apt-only'; then
+        mapfile -O "${#COMPREPLY[@]}" -t COMPREPLY < <(gzip -cd '/var/cache/mist/pkglist.gz' | grep "^${@: -1}")
+    fi
 }
 
 _mist_gen_compreply() {
@@ -10,8 +16,7 @@ _mist_pkg_specified_check() {
     if [[ "${#nonopts[@]}"  -gt 3 ]]; then
         _mist_gen_compreply '${opts[@]}' "${cur}"
     else
-        _mist_get_pkglist
-        _mist_gen_compreply '${opts[@]}' "${cur}"
+        _mist_get_pkglist "${@}"
     fi
 }
 
@@ -23,17 +28,16 @@ _mist() {
         'clone'
         'comment'
         'help'
-        'info'
+        'install'
+        'list'
         'list-comments'
+        'remove'
         'search'
         'update'
+        'upgrade'
         'whoami'
     )
-    local opts=(
-        '--mpr-url'
-        '--token'
-    )
-    
+
     # Get a list of arguments that are nonoptions.
     mapfile -t nonopts < <(printf '%s\n' "${words[@]}" | grep -v '^-')
 
@@ -43,9 +47,11 @@ _mist() {
     fi
 
     case "${nonopts[1]}" in
-        clone|info)
+        clone)
+        opts=('--mpr-url')
+
             case "${prev}" in
-                --token|--mpr-url)
+                --mpr-url)
                     return
                     ;;
             esac
@@ -56,26 +62,27 @@ _mist() {
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac
             ;;
         comment)
+            opts=('--mpr-url' '--msg' '--token')
+
             case "${prev}" in
                 --token|--mpr-url|--msg)
                     return
                     ;;
             esac
 
-            opts+=('--msg')
             case "${cur}" in
                 -*)
                     _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac
@@ -83,9 +90,31 @@ _mist() {
         help)
             return
             ;;
-        list-comments)
+        install)
+            opts=('--mpr-url')
+
             case "${prev}" in
-                --token|--mpr-url)
+                --mpr-url)
+                return
+                ;;
+            esac
+
+            case "${cur}" in
+                -*)
+                    _mist_gen_compreply '${opts[@]}' "${cur}"
+                    return
+                    ;;
+                *)
+                    _mist_pkg_specified_check "${cur}"
+                    return
+                    ;;
+            esac
+            ;;
+        list-comments)
+            opts=('--mpr-url' '--paging')
+
+            case "${prev}" in
+                --mpr-url)
                     return
                     ;;
                 --paging)
@@ -95,47 +124,79 @@ _mist() {
                     ;;
             esac
             
-            opts+=('--paging')
             case "${cur}" in
                 -*)
                     _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac
             ;;
-        search)
+        remove)
+            opts=('--autoremove' '--purge')
+
+            case "${cur}" in
+            -*)
+                _mist_gen_compreply '${opts[@]}' "${cur}"
+                return
+                ;;
+            *)
+                _mist_get_pkglist '--apt-only' "${cur}"
+                return
+                ;;
+            esac
+            ;;
+
+        search|list)
+            opts=('--mpr-url' '--apt-only' '--mpr-only' '--name-only' '--installed')
+
             case "${prev}" in
-                --token|--mpr-url)
+                --mpr-url)
                     return
                     ;;
             esac
 
-            opts+=('--apt-only' '--mpr-only')
             case "${cur}" in
                 -*)
                     _mist_gen_compreply '${opts[@]}' "${cur}"
                     return
                     ;;
                 *)
-                    _mist_pkg_specified_check
+                    _mist_pkg_specified_check "${cur}"
                     return
                     ;;
             esac
             ;;
         update)
+            opts=('--mpr-url')
+
             case "${prev}" in
-                --token|--mpr-url)
+                --mpr-url)
                     return
                     ;;
             esac
 
             _mist_gen_compreply '${opts[@]}' "${cur}"
+            return
+            ;;
+        upgrade)
+            opts=('--apt-only' '--mpr-only' '--mpr-url')
+
+            case "${prev}" in
+                --mpr-url)
+                    return
+                    ;;
+            esac
+
+            _mist_gen_compreply '${opts[@]}' "${cur}"
+            return
             ;;
         whoami)
+            opts=('--token' '--mpr-url')
+
             case "${prev}" in
                 --token|--mpr-url)
                     return

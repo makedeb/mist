@@ -1,35 +1,32 @@
 # Maintainer: Hunter Wittenborn <hunter@hunterwittenborn.com>
 pkgname=mist
-pkgver=0.8.0
+pkgver=0.9.0
 pkgrel=1
-pkgdesc='The official helper for the makedeb Package Repository'
+pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')
 depends=(
     'libapt-pkg-dev'
     'libssl-dev'
+    'sudo'
 )
 optdepends=(
     'r!less'
 )
 makedepends=(
     'asciidoctor'
-    'cargo'
+    'just'
+    'rustup'
     'pkg-config'
 )
 license=('GPL3')
 url='https://github.com/makedeb/mist'
-
-# Transition stuff for the package rename from 'mpr-cli' to 'mist'.
-conflicts=('mpr-cli<0.5.2')
-replaces=("${conflicts[@]}")
 
 source=("${url}/archive/refs/tags/v${pkgver}.tar.gz")
 sha256sums=('SKIP')
 
 build() {
     cd "${pkgname}-${pkgver}/"
-    cargo build --release
-
+    just CARGO_RELEASE=1 NO_SUDO=1 build 
     sed -i "s|:mansource: Git|:mansource: ${pkgver}|" man/mist.1.adoc
 }
 
@@ -38,9 +35,6 @@ package() {
     install -Dm 755 target/release/mist "${pkgdir}/usr/bin/mist"
     asciidoctor -b manpage -o - man/mist.1.adoc | install -Dm 644 /dev/stdin "${pkgdir}/usr/share/man/man1/mist.1"
     install -Dm 644 completions/mist.bash "${pkgdir}/usr/share/bash-completion/completions/mist"
-
-    # Transition stuff for the package rename from 'mpr-cli' to 'mist'.
-    ln -s '/usr/bin/mist' "${pkgdir}/usr/bin/mpr"
 }
 
 # vim: set sw=4 expandtab:

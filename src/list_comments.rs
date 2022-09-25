@@ -15,12 +15,12 @@ pub fn list_comments(args: &clap::ArgMatches) {
     let pkgbase: &String = args.get_one("pkg").unwrap();
     let mpr_url: &String = args.get_one("mpr-url").unwrap();
     let paging = args.get_one::<String>("paging").unwrap().as_str();
-    let mpr_cache = MprCache::new(mpr_url);
+    let mpr_cache = MprCache::new();
 
     let mut pkgbases: Vec<&String> = Vec::new();
 
     // Get a list of packages.
-    for pkg in &mpr_cache.packages {
+    for pkg in mpr_cache.packages().values() {
         pkgbases.push(&pkg.pkgbase);
     }
 

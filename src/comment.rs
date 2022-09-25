@@ -15,22 +15,22 @@ pub fn comment(args: &clap::ArgMatches) {
     let api_token: &String = match args.get_one("token") {
         Some(token) => token,
         None => {
-            message::error("No API token was provided.");
+            message::error("No API token was provided.\n");
             quit::with_code(exitcode::USAGE);
         }
     };
 
     // Get a list of packages.
-    let mpr_cache = MprCache::new(mpr_url);
+    let mpr_cache = MprCache::new();
     let mut pkgnames: Vec<&String> = Vec::new();
 
-    for pkg in &mpr_cache.packages {
+    for pkg in mpr_cache.packages().values() {
         pkgnames.push(&pkg.pkgname);
     }
 
     // Abort if the package base doesn't exist.
     if !pkgnames.contains(&pkg) {
-        message::error(&format!("Package '{}' doesn't exist on the MPR.", pkg));
+        message::error(&format!("Package '{}' doesn't exist on the MPR.\n", pkg));
         quit::with_code(exitcode::USAGE);
     }
 
@@ -44,7 +44,7 @@ pub fn comment(args: &clap::ArgMatches) {
                 Ok(editor) => editor.into_os_string().into_string().unwrap(),
                 Err(err) => {
                     message::error(&format!(
-                        "Couldn't find an editor to write a comment with. [{}]",
+                        "Couldn't find an editor to write a comment with. [{}]\n",
                         err
                     ));
 
@@ -57,7 +57,7 @@ pub fn comment(args: &clap::ArgMatches) {
                 Ok(file) => file.path().to_str().unwrap().to_owned(),
                 Err(err) => {
                     message::error(&format!(
-                        "Failed to create temporary file to write comment in. [{}]",
+                        "Failed to create temporary file to write comment in. [{}]\n",
                         err
                     ));
                     quit::with_code(exitcode::UNAVAILABLE);
@@ -65,14 +65,12 @@ pub fn comment(args: &clap::ArgMatches) {
             };
 
             // Open the file in the editor.
-            message::info(&format!("Opening '{}' in '{}'...", &file, editor));
+            message::info(&format!("Opening '{}' in '{}'...\n", &file, editor));
 
-            let cmd = util::CommandInfo {
-                args: &vec![&editor, &file],
-                capture: false,
-                stdin: None,
-            };
-            util::run_command(&cmd);
+            let mut cmd = util::sudo::run_as_normal_user(&editor);
+            cmd.arg(&file);
+            let status = cmd.spawn().unwrap().wait().unwrap();
+            util::check_exit_status(&cmd, &status);
 
             // Read the changed file.
             let mut file_content = String::new();
@@ -91,5 +89,5 @@ pub fn comment(args: &clap::ArgMatches) {
 
     // Parse the message.
     let json = serde_json::from_str::<CommentResult>(&resp_text).unwrap();
-    message::info(&format!("Succesfully posted comment. [{}]", json.link));
+    message::info(&format!("Succesfully posted comment. [{}]\n", json.link));
 }

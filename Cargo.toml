@@ -1,6 +1,6 @@
 [package]
 name = "mist"
-version = "0.8.0"
+version = "0.10.0"
 authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
 description = "The official command-line interface for the makedeb Package Repository"
 edition = "2021"
@@ -11,7 +11,7 @@ keywords = ["makedeb", "mpr", "apt", "mpr-helper", "helper"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-bat = "0.21.0"
+bat = { version = "0.21.0", default-features = false, features = ["paging", "regex-fancy"]}
 colored = { git = "https://github.com/mackwic/colored" }
 chrono = "0.4.19"
 clap = { version = "3.2.16", features = ["cargo", "env"] }
@@ -20,10 +20,14 @@ edit = "0.1.4"
 exitcode = "1.1.2"
 flate2 = "1.0.24"
 lazy_static = "1.4.0"
+makedeb-srcinfo = "0.8.0"
 quit = "1.1.4"
 regex = "1.6.0"
 reqwest = { version = "0.11.11", features = ["blocking", "json"] }
-rust-apt = "0.3.0"
+rust-apt = { git = "https://gitlab.com/volian/rust-apt", branch = "fix/tagfile-parsing" }
 serde = { version = "1.0.142", features = ["derive"] }
 serde_json = "1.0.83"
 tempfile = "3.3.0"
+termsize = "0.1.6"
+users = "0.11.0"
+which = "4.3.0"

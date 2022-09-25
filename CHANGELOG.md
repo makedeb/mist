@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2022-09-25
+### Added
+- Added `install` command.
+- Added `upgrade` command.
+- Added `remove` command.
+- Added `list` command.
+
+### Removed
+- Removed `info` command.
+
 ## [0.8.0] - 2022-08-04
 ### Changed
 - Renamed project back to `Mist`.
