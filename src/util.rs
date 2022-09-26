@@ -335,7 +335,7 @@ pub mod sudo {
     pub fn check_perms() {
         super::message::info("Obtaining root permissions...\n");
 
-        let mut cmd = self::run_as_normal_user("sudo");
+        let mut cmd = self::run_as_normal_user("/usr/bin/sudo");
         cmd.arg("true");
 
         if !cmd.spawn().unwrap().wait().unwrap().success() {
@@ -351,7 +351,7 @@ pub mod sudo {
 
     // Run a command as the normal user declared by [`NORMAL_UID`].
     pub fn run_as_normal_user<P: AsRef<super::OsStr>>(program: P) -> super::ProcCommand {
-        let mut cmd = super::ProcCommand::new("sudo");
+        let mut cmd = super::ProcCommand::new("/usr/bin/sudo");
         cmd.args(["-E", "-n"]);
         cmd.arg(format!("-u#{}", *self::NORMAL_UID));
         cmd.arg("--");

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2022-09-25
+### Security
+- Ensure `sudo` binary used for permission checks isn't one supplied by the user in the `PATH` variable.
+
 ## [0.9.4] - 2022-09-25
 ### Fixed
 - Ensure cache directories exist before they're used.
