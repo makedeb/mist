@@ -1,4 +1,8 @@
 # Mist
+[![Latest deployment status](https://img.shields.io/drone/build/makedeb/mist?logo=drone&server=https%3A%2F%2Fdrone.hunterwittenborn.com)](https://drone.hunterwittenborn.com/makedeb/mist/latest)
+[![MPR - mist](https://img.shields.io/badge/mpr-mist-orange)](https://mpr.makedeb.org/packages/mist)
+[![MPR - mist-bin](https://img.shields.io/badge/mpr-mist--bin-orange)](https://mpr.makedeb.org/packages/mist-bin)
+
 This is the repository for Mist, the official command-line interface for the makedeb Package Repository.
 
 Mist makes it easier for users to interact with the MPR in a variety of ways. Some of its most notable features include:
@@ -10,8 +14,6 @@ Mist makes it easier for users to interact with the MPR in a variety of ways. So
 - Cloning packages from the MPR.
 - Listing comments for packages from the MPR.
 - Commenting packages from the MPR.
-
-[![Latest deployment status](https://img.shields.io/drone/build/makedeb/mist?logo=drone&server=https%3A%2F%2Fdrone.hunterwittenborn.com)](https://drone.hunterwittenborn.com/makedeb/mist/latest)
 
 ## Installation
 Users have a few options for installing Mist:
@@ -28,7 +30,8 @@ sudo apt install mist
 ### From the MPR
 You can also install Mist directly from the MPR if you'd prefer that.
 
-To install from source, run the following:
+#### From Source
+To install from source, install `mist` from the MPR:
 
 ```sh
 git clone 'https://mpr.makedeb.org/mist'
@@ -36,9 +39,18 @@ cd mist/
 makedeb -si -H 'MPR-Package: yes'
 ```
 
-> If you install from the MPR and omit `-H 'MPR-Package: yes'`, Mist will be **unable to update itself**.
+> If you omit `-H 'MPR-Package: yes'`, Mist will be **unable to update itself**.
 
 > Mist currently requires the nightly version of the Rust compiler toolchain in order to build. To build it locally, it's recommended to use [rustup](https://rustup.rs), which will automatically manage and update the nightly toolchain on your local system. If preferred, rustup can be installed from the [MPR](https://mpr.makedeb.org/packages/rustup) or the Prebuilt-MPR.
+
+#### From a Binary
+To install Mist from a prebuilt binary, install the `mist-bin` package:
+
+```sh
+git clone 'https://mpr.makedeb.org/mist-bin'
+cd mist/
+makedeb -si
+```
 
 ## Contributing
 If there's something you want added/fixed in Mist, feel free to open a pull request. There aren't many guidelines on what you should do quite yet, so just submit your changes and we can figure out what to do from there!
