@@ -7,6 +7,7 @@ use crate::{
 use flate2::read::GzDecoder;
 use rust_apt::{
     cache::{Cache as AptCache, PackageSort},
+    package::Package,
     progress::{AcquireProgress, InstallProgress},
     tagfile::TagSection,
 };
@@ -265,12 +266,30 @@ pub struct Cache {
 }
 
 impl Cache {
+    /// [`PackageSort::default`] isn't supposed to include virtual packages, but
+    /// it appears to be doing so on some systems. This checks for virtual
+    /// packages manually and excludes them.
+    pub fn get_nonvirtual_packages<'a>(
+        apt_cache: &'a AptCache,
+        sort: &'a PackageSort,
+    ) -> Vec<Package<'a>> {
+        let mut vec = vec![];
+
+        for pkg in apt_cache.packages(sort) {
+            if pkg.candidate().is_some() {
+                vec.push(pkg);
+            }
+        }
+
+        vec
+    }
+
     /// Create a new cache.
     pub fn new(apt_cache: AptCache, mpr_cache: MprCache) -> Self {
         // Package list.
         let mut pkglist = Vec::new();
 
-        for pkg in apt_cache.packages(&PackageSort::default()) {
+        for pkg in Self::get_nonvirtual_packages(&apt_cache, &PackageSort::default()) {
             let candidate = pkg.candidate().unwrap();
 
             pkglist.push(CachePackage {
@@ -344,7 +363,7 @@ impl Cache {
         let mut to_downgrade: Vec<String> = Vec::new();
 
         // Report APT packages.
-        for pkg in self.apt_cache().packages(&PackageSort::default()) {
+        for pkg in Self::get_nonvirtual_packages(&self.apt_cache, &PackageSort::default()) {
             let pkgname = pkg.name();
             let apt_string = format!("{}{}", "apt/".to_string().green(), &pkgname);
 

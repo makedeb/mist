@@ -42,7 +42,7 @@ pub fn remove(args: &clap::ArgMatches) {
 
     // Remove any packages that are no longer needed.
     if autoremove {
-        for pkg in cache.apt_cache().packages(&PackageSort::default()) {
+        for pkg in Cache::get_nonvirtual_packages(cache.apt_cache(), &PackageSort::default()) {
             if pkg.is_auto_removable() {
                 pkg.mark_delete(purge).then_some(()).unwrap();
                 pkg.protect();

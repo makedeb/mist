@@ -30,7 +30,7 @@ pub fn upgrade(args: &clap::ArgMatches) {
     let mut mpr_pkgs = vec![];
 
     // Check which APT packages need upgrading, and mark any for such if needed.
-    for pkg in cache.apt_cache().packages(&PackageSort::default()) {
+    for pkg in Cache::get_nonvirtual_packages(cache.apt_cache(), &PackageSort::default()) {
         let pkgname = pkg.name();
 
         if !mpr_only && pkg.is_upgradable(false) && let Some(pkg_control) = dpkg_map.get(&pkgname) && pkg_control.get("MPR-Package").is_none() {
