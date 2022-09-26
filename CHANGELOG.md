@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.9.8] - 2022-09-26
+### Fixed
+- Fix panics when using the `-i` flag with `mist list`.
+- Fix panics when installing MPR packages.
+- Fix `/var/cache/mist/pkglist.gz` being read in completions even when it doesn't exist.
+
 ## [0.9.7] - 2022-09-26
 ### Fixed
 - Ensure Mist's cache directory in `${HOME}` is owned by the current user when Mist has to create it.

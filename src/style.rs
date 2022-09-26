@@ -177,9 +177,11 @@ pub fn generate_pkginfo_entries(
 
         // Installed only.
         if installed_only
-            && cache.get_apt_pkg(pkgname).is_some()
-            && !cache.apt_cache().get(pkgname).unwrap().is_installed()
+            && let Some(pkg) = cache.apt_cache().get(pkgname)
+            && !pkg.is_installed()
         {
+            continue;
+        } else if cache.apt_cache().get(pkgname).is_none() {
             continue;
         }
 

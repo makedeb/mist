@@ -179,8 +179,7 @@ pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<Vec<String>
     for pkg in new_cache.get_changes(false) {
         let mut invalid_change: Option<&str> = None;
         let mpr_pkg_change = {
-            if pkglist.contains(&pkg.name().as_str())
-                && let Ok(string) = fs::read_to_string(pkg.name() + "/DEBIAN/control")
+            if let Ok(string) = fs::read_to_string(pkg.name() + "/DEBIAN/control")
                 && let Ok(tagsection) = TagSection::new(&string)
                 && tagsection.get("Version").unwrap() == &pkg.candidate().unwrap().version() {
                     true

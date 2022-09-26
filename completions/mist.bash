@@ -3,8 +3,10 @@ _mist_get_pkglist() {
         mapfile -t COMPREPLY < <(apt-cache --no-generate pkgnames "${@: -1}")
     fi
 
-    if ([[ -f '/var/cache/mist/pkglist.gz' ]] && ! printf '%s\n' "${@}" "${words[@]}" | grep -q -- '--apt-only') || ! printf '%s\n' "${opts[@]}" | grep -q -- '--apt-only'; then
-        mapfile -O "${#COMPREPLY[@]}" -t COMPREPLY < <(gzip -cd '/var/cache/mist/pkglist.gz' | grep "^${@: -1}")
+    if ! printf '%s\n' "${@}" "${words[@]}" | grep -q -- '--apt-only' || ! printf '%s\n' "${opts[@]}" | grep -q -- '--apt-only'; then
+        if [[ -f '/var/cache/mist/pkglist.gz' ]]; then
+            mapfile -O "${#COMPREPLY[@]}" -t COMPREPLY < <(gzip -cd '/var/cache/mist/pkglist.gz' | grep "^${@: -1}")
+        fi
     fi
 }
 
