@@ -263,7 +263,9 @@ pub mod xdg {
     pub fn get_cache_dir() -> super::path::PathBuf {
         let mut cache_dir = dirs::cache_dir().unwrap();
         cache_dir.push("mist");
+        super::sudo::to_normal();
         super::fs::create_dir(&cache_dir.clone().into_os_string().into_string().unwrap());
+        super::sudo::to_root();
         cache_dir
     }
 
@@ -345,9 +347,9 @@ pub mod sudo {
     }
 
     /// Change the user to the non-root user.
-    // pub fn to_normal() {
-    //     users::switch::set_effective_uid(*self::NORMAL_UID).unwrap();
-    // }
+    pub fn to_normal() {
+        users::switch::set_effective_uid(*self::NORMAL_UID).unwrap();
+    }
 
     // Run a command as the normal user declared by [`NORMAL_UID`].
     pub fn run_as_normal_user<P: AsRef<super::OsStr>>(program: P) -> super::ProcCommand {
