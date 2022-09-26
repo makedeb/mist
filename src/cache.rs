@@ -543,7 +543,10 @@ impl Cache {
             println!();
 
             loop {
-                message::question(&format!("Review files for '{}'? [Y/n] ", pkg.green()));
+                message::question(&format!(
+                    "Review files for '{}'? [Y/n] ",
+                    pkg.bold().green()
+                ));
                 io::stdout().flush().unwrap();
 
                 let mut resp = String::new();
@@ -558,8 +561,30 @@ impl Cache {
                 cache_dir.push("git-pkg");
                 cache_dir.push(pkg);
 
+                let files = {
+                    let mut files = vec![];
+
+                    let mut cmd = util::sudo::run_as_normal_user("git");
+                    cmd.args(["ls-tree", "master", "--name-only"]);
+                    let output = cmd.output().unwrap();
+                    util::check_exit_status(&cmd, &output.status);
+
+                    let string = std::str::from_utf8(&output.stdout).unwrap();
+
+                    for file in string.lines() {
+                        // There's no point in having the user review the '.SRCINFO' file.
+                        if file == ".SRCINFO" {
+                            continue;
+                        }
+
+                        files.push(file.to_string());
+                    }
+
+                    files
+                };
+
                 let mut cmd = util::sudo::run_as_normal_user(&editor);
-                cmd.arg("./");
+                cmd.args(files);
 
                 let status = cmd.spawn().unwrap().wait().unwrap();
                 util::check_exit_status(&cmd, &status)
@@ -597,7 +622,7 @@ impl Cache {
             for pkg in pkg_group {
                 let mut git_dir = cache_dir.clone();
                 git_dir.push(pkg.clone());
-                env::set_current_dir(git_dir).unwrap();
+                env::set_current_dir(&git_dir).unwrap();
 
                 // See this package has a control field value of 'MPR-Package'. If it does,
                 // don't add it to our arg list. TODO: We need to add this key
@@ -636,7 +661,13 @@ impl Cache {
                     let arch = control_file.get("Architecture").unwrap();
 
                     if flattened_pkgnames.contains(&pkgname.as_str()) {
-                        debs.push(format!("{}_{}_{}.deb", pkgname, version, arch));
+                        debs.push(format!(
+                            "{}/{}_{}_{}.deb",
+                            git_dir.display(),
+                            pkgname,
+                            version,
+                            arch
+                        ));
                     }
 
                     install_list.push([

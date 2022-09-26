@@ -5,33 +5,9 @@ use std::{env, fs};
 pub fn clone_mpr_pkgs(pkglist: &Vec<&str>, mpr_url: &str) {
     let mut cache_dir = util::xdg::get_cache_dir();
     cache_dir.push("git-pkg");
-
-    // Lint checks for the cache dir.
-    if !cache_dir.exists() {
-        if fs::create_dir_all(&cache_dir).is_err() {
-            message::error(&format!(
-                "Failed to create directory for cache directory ({}).\n",
-                cache_dir
-                    .into_os_string()
-                    .into_string()
-                    .unwrap()
-                    .green()
-                    .bold()
-            ));
-            quit::with_code(exitcode::UNAVAILABLE);
-        }
-    } else if !cache_dir.is_dir() {
-        message::error(&format!(
-            "Config directory path '{}' needs to be a directory, but it isn't.\n",
-            cache_dir
-                .into_os_string()
-                .into_string()
-                .unwrap()
-                .green()
-                .bold()
-        ));
-        quit::with_code(exitcode::UNAVAILABLE);
-    }
+    util::sudo::to_normal();
+    util::fs::create_dir(&cache_dir.clone().into_os_string().into_string().unwrap());
+    util::sudo::to_root();
 
     // Check each package.
     for pkg in pkglist {
@@ -188,7 +164,7 @@ pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<Vec<String>
                 }
         };
 
-        if !mpr_pkg_change {
+        if apt_cache.get(&pkg.name()).is_some() {
             let normal_pkg = apt_cache.get(&pkg.name()).unwrap();
             let normal_pkg_keep = normal_pkg.marked_keep();
 
@@ -234,7 +210,9 @@ pub fn order_mpr_packages(cache: &Cache, pkglist: &Vec<&str>) -> Vec<Vec<String>
             }
 
             normal_pkg.protect();
-        } else {
+        }
+
+        if mpr_pkg_change {
             mpr_pkgs.first_mut().unwrap().push(pkg);
         }
     }

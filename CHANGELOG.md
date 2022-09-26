@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.9.9] - 2022-09-26
+### Changed
+- Pass in each file manually to `${EDITOR}` during file review.
+
+### Fixed
+- Fix issues with MPR dependency resolver.
+
 ## [0.9.8] - 2022-09-26
 ### Fixed
 - Fix panics when using the `-i` flag with `mist list`.
