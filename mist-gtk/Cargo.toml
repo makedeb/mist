@@ -1,0 +1,12 @@
+[package]
+name = "mist-gtk"
+version = "0.9.9"
+authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
+description = "The GUI package manager for the makedeb Package Repository"
+edition = "2021"
+homepage = "https://github.com/makedeb/mist"
+repository = "https://github.com/makedeb/mist"
+license = "GPL-3.0-or-later"
+
+[dependencies]
+gtk = { version = "0.4.8", package = "gtk4" }
