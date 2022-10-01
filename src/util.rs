@@ -322,7 +322,7 @@ pub mod fs {
 /// Sudo user management stuff.
 pub mod sudo {
     super::lazy_static! {
-        static ref NORMAL_UID: u32 = users::get_current_uid();
+        pub static ref NORMAL_UID: u32 = users::get_current_uid();
     }
 
     /// Change the user to root.

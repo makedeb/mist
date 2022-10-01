@@ -23,6 +23,7 @@ use std::{
     fs::File,
     os::{linux::fs::MetadataExt, unix::fs::PermissionsExt},
 };
+use style::Colorize;
 use which::which;
 
 #[rustfmt::skip]
@@ -241,6 +242,18 @@ fn main() {
     // If we're running a command that should be permission-checked, then do so.
     if vec!["install", "remove", "update", "upgrade"].contains(&cmd_results.subcommand().unwrap().0)
     {
+        // If we're running a command that invokes 'makedeb', ensure that we're not
+        // running as root.
+        if vec!["install", "upgrade"].contains(&cmd_results.subcommand().unwrap().0)
+            && *util::sudo::NORMAL_UID == 0
+        {
+            message::error(&format!(
+            "This command cannot be ran as root, as it needs to call '{}', which is required to run under a non-root user.\n",
+            "makedeb".bold().green()
+        ));
+            quit::with_code(exitcode::USAGE);
+        }
+
         util::sudo::check_perms();
     }
 

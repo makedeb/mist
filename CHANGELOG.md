@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2022-10-01
+### Changed
+- Don't allow running `install` or `upgrade` commands as root.
+
 ## [0.9.9] - 2022-09-26
 ### Changed
 - Pass in each file manually to `${EDITOR}` during file review.

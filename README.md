@@ -27,6 +27,8 @@ First, [set up the Prebuilt-MPR on your system](https://docs.makedeb.org/prebuil
 sudo apt install mist
 ```
 
+> You'll also need to have [makedeb installed](https://docs.makedeb.org/installing) if it is not already.
+
 ### From the MPR
 You can also install Mist directly from the MPR if you'd prefer that.
 
