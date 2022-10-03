@@ -29,6 +29,10 @@ pub fn list(args: &clap::ArgMatches) {
         }
     }
 
+    if candidates.is_empty() {
+        quit::with_code(exitcode::UNAVAILABLE);
+    }
+
     print!(
         "{}",
         style::generate_pkginfo_entries(

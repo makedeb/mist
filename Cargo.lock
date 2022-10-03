@@ -1173,7 +1173,7 @@ dependencies = [
 [[package]]
 name = "rust-apt"
 version = "0.4.1"
-source = "git+https://gitlab.com/volian/rust-apt?branch=fix/tagfile-parsing#7750594be3ca30ee29804bf46cf76896dd61655b"
+source = "git+https://gitlab.com/volian/rust-apt#8dd5061314ff7fa699a3b0c3d0658a8d66004603"
 dependencies = [
  "cxx",
  "cxx-build",
