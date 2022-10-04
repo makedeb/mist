@@ -1,0 +1,27 @@
+image: ghcr.io/rust-lang/rust:nightly-bullseye-slim
+tasks:
+  deps:
+    command: |
+      apt update
+      apt-get install -y g++ pkg-config libssl-dev libapt-pkg-dev lsb-release sudo
+  test:
+    dependencies: [ deps ]
+    input_paths:
+      - Cargo.toml
+      - Cargo.lock
+      - src/
+    command: |
+      cargo fmt --check
+      cargo clippy -- -D warnings
+      cargo test
+      cargo build
+  test-binary:
+    dependencies: [ test ]
+    command: |
+      chmod a+s target/debug/mist
+
+      ./target/debug/mist update
+
+      if ./target/debug/mist search nonexistent; then echo "Missing 'search' results should not exit with status code 0" && exit 1; fi
+
+      if ./target/debug/mist list nonexistent; then echo "Missing 'list' results should not exit with status code 0" && exit 1; fi
