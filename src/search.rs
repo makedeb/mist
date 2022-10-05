@@ -1,16 +1,11 @@
 use crate::{
     cache::{Cache, CachePackage, MprCache},
+    args::SearchMode,
     style,
 };
 use rust_apt::cache::Cache as AptCache;
 
-pub fn search(args: &clap::ArgMatches) {
-    let query_list: Vec<&String> = args.get_many("query").unwrap().collect();
-    let apt_only = args.is_present("apt-only");
-    let mpr_only = args.is_present("mpr-only");
-    let installed_only = args.is_present("installed-only");
-    let name_only = args.is_present("name-only");
-
+pub fn search(query_list: &Vec<String>, _: &String, mode: &SearchMode, name_only: bool) {
     let cache = Cache::new(AptCache::new(), MprCache::new());
     let mut candidates: Vec<&Vec<CachePackage>> = Vec::new();
 
@@ -47,9 +42,7 @@ pub fn search(args: &clap::ArgMatches) {
         style::generate_pkginfo_entries(
             &candidates,
             &cache,
-            apt_only,
-            mpr_only,
-            installed_only,
+            mode,
             name_only
         )
     );

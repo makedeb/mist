@@ -6,6 +6,7 @@ use chrono::{TimeZone, Utc};
 
 use crate::{
     apt_util,
+    args::SearchMode,
     cache::{Cache, CachePackage},
 };
 use std::{cmp::Ordering, fmt::Write};
@@ -154,9 +155,7 @@ pub fn generate_pkginfo_entry(
 pub fn generate_pkginfo_entries(
     pkgs: &Vec<&Vec<CachePackage>>,
     cache: &Cache,
-    apt_only: bool,
-    mpr_only: bool,
-    installed_only: bool,
+    mode: &SearchMode,
     name_only: bool,
 ) -> String {
     let mut matches = Vec::new();
@@ -165,28 +164,23 @@ pub fn generate_pkginfo_entries(
     for pkg_group in pkgs {
         let pkgname = &pkg_group.get(0).unwrap().pkgname;
 
-        // APT only.
-        if apt_only && cache.get_apt_pkg(pkgname).is_none() {
-            continue;
+        match mode {
+            SearchMode::None | SearchMode::AptOnly => {
+                if cache.get_apt_pkg(&pkgname).is_some() {
+                    matches.push(pkg_group)
+                }
+            },
+            SearchMode::MprOnly => {
+                if cache.get_mpr_pkg(&pkgname).is_some() {
+                    matches.push(pkg_group)
+                }
+            },
+            SearchMode::Installed => {
+                if let Some(pkg) = cache.apt_cache().get(pkgname) && !pkg.is_installed() {
+                    matches.push(pkg_group)
+                }
+            }
         }
-
-        // MPR only.
-        if mpr_only && cache.get_mpr_pkg(pkgname).is_none() {
-            continue;
-        }
-
-        // Installed only.
-        if installed_only
-            && let Some(pkg) = cache.apt_cache().get(pkgname)
-            && !pkg.is_installed()
-        {
-            continue;
-        } else if cache.apt_cache().get(pkgname).is_none() {
-            continue;
-        }
-
-        // Package be passed all the tests bro. We's be adding it to the vector now.
-        matches.push(pkg_group);
     }
 
     let matches_len = matches.len();

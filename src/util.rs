@@ -20,13 +20,13 @@ struct AuthenticationError {
 }
 
 // Struct to handle API-authenticated requests to the MPR.
-pub struct AuthenticatedRequest<'a> {
-    api_token: &'a str,
-    mpr_url: &'a str,
+pub struct AuthenticatedRequest {
+    api_token: String,
+    mpr_url: String,
 }
 
-impl<'a> AuthenticatedRequest<'a> {
-    pub fn new(api_token: &'a str, mpr_url: &'a str) -> Self {
+impl AuthenticatedRequest {
+    pub fn new(api_token: String, mpr_url: String) -> Self {
         Self { api_token, mpr_url }
     }
 
@@ -60,7 +60,7 @@ impl<'a> AuthenticatedRequest<'a> {
         let client = reqwest::blocking::Client::new();
         let resp = client
             .get(format!("{}/api/{}", self.mpr_url, path))
-            .header("Authorization", self.api_token)
+            .header("Authorization", &self.api_token)
             .send();
 
         self.handle_response(resp)
@@ -72,7 +72,7 @@ impl<'a> AuthenticatedRequest<'a> {
         let resp = client
             .post(format!("{}/api/{}", self.mpr_url, path))
             .body(body)
-            .header("Authorization", self.api_token)
+            .header("Authorization", &self.api_token)
             .send();
 
         self.handle_response(resp)

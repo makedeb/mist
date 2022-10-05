@@ -1,4 +1,4 @@
-use crate::{cache::MprCache, message};
+use crate::{cache::MprCache, message, args::Paging};
 use bat::{self, PrettyPrinter};
 use chrono::{TimeZone, Utc};
 use serde::Deserialize;
@@ -11,10 +11,7 @@ struct Comment {
     user: String,
 }
 
-pub fn list_comments(args: &clap::ArgMatches) {
-    let pkgbase: &String = args.get_one("pkg").unwrap();
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let paging = args.get_one::<String>("paging").unwrap().as_str();
+pub fn list_comments(pkgbase: &String, mpr_url: &String, paging: &Paging) {
     let mpr_cache = MprCache::new();
 
     let mut pkgbases: Vec<&String> = Vec::new();
@@ -77,9 +74,9 @@ pub fn list_comments(args: &clap::ArgMatches) {
 
     // Get the paging mode from the user.
     let paging_mode = match paging {
-        "always" => bat::PagingMode::Always,
-        "never" => bat::PagingMode::Never,
-        &_ => bat::PagingMode::QuitIfOneScreen,
+        Paging::Always => bat::PagingMode::Always,
+        Paging::Never => bat::PagingMode::Never,
+        Paging::Auto => bat::PagingMode::QuitIfOneScreen,
     };
 
     PrettyPrinter::new()

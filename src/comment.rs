@@ -9,17 +9,7 @@ struct CommentResult {
     link: String,
 }
 
-pub fn comment(args: &clap::ArgMatches) {
-    let pkg: &String = args.get_one("pkg").unwrap();
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let api_token: &String = match args.get_one("token") {
-        Some(token) => token,
-        None => {
-            message::error("No API token was provided.\n");
-            quit::with_code(exitcode::USAGE);
-        }
-    };
-
+pub fn comment(pkg: &String, message: &Option<String>, api_token: String, mpr_url: String) {
     // Get a list of packages.
     let mpr_cache = MprCache::new();
     let mut pkgnames: Vec<&String> = Vec::new();
@@ -36,7 +26,7 @@ pub fn comment(args: &clap::ArgMatches) {
 
     // Get the message.
     // If no message was supplied, get one from the user.
-    let msg: String = match args.get_one::<String>("msg") {
+    let msg: String = match message {
         Some(msg) => (msg).to_owned(),
         None => {
             // Get the editor.
