@@ -6,7 +6,7 @@ use crate::{
 };
 use rust_apt::cache::Cache as AptCache;
 
-pub fn install(pkglist: &Vec<String>,  mpr_url: String) {
+pub fn install(pkglist: &Vec<String>, mpr_url: String) {
     let cache = Cache::new(AptCache::new(), MprCache::new());
 
     // Package sources.

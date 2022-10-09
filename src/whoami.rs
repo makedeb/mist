@@ -1,4 +1,4 @@
-use crate::{util};
+use crate::util;
 use serde::Deserialize;
 
 #[derive(Deserialize)]

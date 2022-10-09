@@ -136,27 +136,36 @@ pub enum UpgradeMode {
     /// Only upgrade APT packages
     AptOnly,
     /// Only upgrade MPR packages
-    MprOnly
+    MprOnly,
 }
 
 #[derive(Clone, Debug, ValueEnum)]
 pub enum Paging {
     Auto,
     Always,
-    Never
+    Never,
 }
 
 #[derive(Args)]
 pub struct MprURL {
     /// URL to access the MPR from
-    #[arg(env = "MPR_URL", default_value = "https://mpr.makedeb.org", long = "mpr-url")]
+    #[arg(
+        env = "MPR_URL",
+        default_value = "https://mpr.makedeb.org",
+        long = "mpr-url"
+    )]
     pub url: String,
 }
 
 #[derive(Args)]
 pub struct MprToken {
     /// The API token to authenticate to the MPR with
-    #[arg(env = "MPR_TOKEN", required = true, hide_env_values = true, long = "token")]
+    #[arg(
+        env = "MPR_TOKEN",
+        required = true,
+        hide_env_values = true,
+        long = "token"
+    )]
     pub token: String,
 }
 
@@ -169,5 +178,5 @@ pub enum SearchMode {
     /// Only packages available via APT
     AptOnly,
     /// Only installed packages
-    Installed
+    Installed,
 }

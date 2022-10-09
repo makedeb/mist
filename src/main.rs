@@ -69,13 +69,25 @@ fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Clone { package_name, mpr_url } => {
-            clone::clone(package_name, &mpr_url.url)
-        },
-        Commands::Comment { package_name, message, mpr_url, mpr_token } => {
-            comment::comment(package_name, message, mpr_token.token.clone(), mpr_url.url.clone())
-        },
-        Commands::Install { package_names, mpr_url } => {
+        Commands::Clone {
+            package_name,
+            mpr_url,
+        } => clone::clone(package_name, &mpr_url.url),
+        Commands::Comment {
+            package_name,
+            message,
+            mpr_url,
+            mpr_token,
+        } => comment::comment(
+            package_name,
+            message,
+            mpr_token.token.clone(),
+            mpr_url.url.clone(),
+        ),
+        Commands::Install {
+            package_names,
+            mpr_url,
+        } => {
             if *util::sudo::NORMAL_UID == 0 {
                 return message::error(&format!(
                     "This command cannot be ran as root, as it needs to call '{}', which is required to run under a non-root user.\n",
@@ -84,24 +96,37 @@ fn main() {
             }
 
             install::install(package_names, mpr_url.url.clone())
-        },
-        Commands::List { package_names, mode, mpr_url, name_only } => {
-            list::list(package_names, &mpr_url.url, mode, name_only)
-        },
-        Commands::ListComments { package_name, mpr_url, paging } => {
-            list_comments::list_comments(package_name, &mpr_url.url, paging)
-        },
-        Commands::Remove { package_names, mpr_url, purge, autoremove } => {
+        }
+        Commands::List {
+            package_names,
+            mode,
+            mpr_url,
+            name_only,
+        } => list::list(package_names, &mpr_url.url, mode, name_only),
+        Commands::ListComments {
+            package_name,
+            mpr_url,
+            paging,
+        } => list_comments::list_comments(package_name, &mpr_url.url, paging),
+        Commands::Remove {
+            package_names,
+            mpr_url,
+            purge,
+            autoremove,
+        } => {
             util::sudo::check_perms();
             remove::remove(package_names, &mpr_url.url, *purge, *autoremove)
-        },
-        Commands::Search { query, mode, mpr_url, name_only } => {
-            search::search(query, &mpr_url.url, mode, *name_only)
-        },
+        }
+        Commands::Search {
+            query,
+            mode,
+            mpr_url,
+            name_only,
+        } => search::search(query, &mpr_url.url, mode, *name_only),
         Commands::Update { mpr_url } => {
             util::sudo::check_perms();
             update::update(&mpr_url.url)
-        },
+        }
         Commands::Upgrade { mpr_url, mode } => {
             if *util::sudo::NORMAL_UID == 0 {
                 return message::error(&format!(
@@ -111,9 +136,9 @@ fn main() {
             }
 
             upgrade::upgrade(&mpr_url.url, mode)
-        },
+        }
         Commands::Whoami { mpr_url, mpr_token } => {
             whoami::whoami(mpr_token.token.clone(), mpr_url.url.clone())
-        },
+        }
     };
 }

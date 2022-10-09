@@ -23,11 +23,6 @@ pub fn list(pkglist: &Vec<String>, _: &String, mode: &SearchMode, name_only: &bo
 
     print!(
         "{}",
-        style::generate_pkginfo_entries(
-            &candidates,
-            &cache,
-            mode,
-            *name_only
-        )
+        style::generate_pkginfo_entries(&candidates, &cache, mode, *name_only)
     );
 }

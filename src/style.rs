@@ -166,12 +166,12 @@ pub fn generate_pkginfo_entries(
 
         match mode {
             SearchMode::None | SearchMode::AptOnly => {
-                if cache.get_apt_pkg(&pkgname).is_some() {
+                if cache.get_apt_pkg(pkgname).is_some() {
                     matches.push(pkg_group)
                 }
             },
             SearchMode::MprOnly => {
-                if cache.get_mpr_pkg(&pkgname).is_some() {
+                if cache.get_mpr_pkg(pkgname).is_some() {
                     matches.push(pkg_group)
                 }
             },

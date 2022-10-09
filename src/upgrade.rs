@@ -9,7 +9,7 @@ use rust_apt::{
 };
 use std::{collections::HashMap, fs};
 
-pub fn upgrade(mpr_url: &String, upgrade_mode: &UpgradeMode) {
+pub fn upgrade(mpr_url: &str, upgrade_mode: &UpgradeMode) {
     let (apt_only, mpr_only) = match upgrade_mode {
         UpgradeMode::Both => (false, false),
         UpgradeMode::AptOnly => (true, false),

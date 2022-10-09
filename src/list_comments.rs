@@ -1,4 +1,4 @@
-use crate::{cache::MprCache, message, args::Paging};
+use crate::{args::Paging, cache::MprCache, message};
 use bat::{self, PrettyPrinter};
 use chrono::{TimeZone, Utc};
 use serde::Deserialize;

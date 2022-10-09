@@ -1,6 +1,6 @@
 use crate::{
-    cache::{Cache, CachePackage, MprCache},
     args::SearchMode,
+    cache::{Cache, CachePackage, MprCache},
     style,
 };
 use rust_apt::cache::Cache as AptCache;
@@ -39,11 +39,6 @@ pub fn search(query_list: &Vec<String>, _: &String, mode: &SearchMode, name_only
 
     print!(
         "{}",
-        style::generate_pkginfo_entries(
-            &candidates,
-            &cache,
-            mode,
-            name_only
-        )
+        style::generate_pkginfo_entries(&candidates, &cache, mode, name_only)
     );
 }
