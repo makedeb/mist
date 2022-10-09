@@ -70,16 +70,12 @@ fn main() {
 
     match &cli.command {
         Commands::Clone { package_name, mpr_url } => {
-            println!("'clone' {:?} from {:?}", package_name, mpr_url.url);
             clone::clone(package_name, &mpr_url.url)
         },
         Commands::Comment { package_name, message, mpr_url, mpr_token } => {
-            println!("'comment': package {:?}: '{:?}'. Token: '{:?}' on {:?}", package_name, message, mpr_token.token, mpr_url.url);
             comment::comment(package_name, message, mpr_token.token.clone(), mpr_url.url.clone())
         },
         Commands::Install { package_names, mpr_url } => {
-            println!("'install': packages {:?}: on {:?}", package_names, mpr_url.url);
-
             if *util::sudo::NORMAL_UID == 0 {
                 return message::error(&format!(
                     "This command cannot be ran as root, as it needs to call '{}', which is required to run under a non-root user.\n",
@@ -90,30 +86,23 @@ fn main() {
             install::install(package_names, mpr_url.url.clone())
         },
         Commands::List { package_names, mode, mpr_url, name_only } => {
-            println!("'list': packages {:?}: on {:?}. filter mode: {:?}, name_only: {}", package_names, mpr_url.url, mode, name_only);
             list::list(package_names, &mpr_url.url, mode, name_only)
         },
         Commands::ListComments { package_name, mpr_url, paging } => {
-            println!("'list comments': package {:?}: on {:?}. paging mode: {:?}", package_name, mpr_url.url, paging);
             list_comments::list_comments(package_name, &mpr_url.url, paging)
         },
         Commands::Remove { package_names, mpr_url, purge, autoremove } => {
-            println!("'remove': packages {:?}: on {:?}. purge: {}, autoremove: {}", package_names, mpr_url.url, purge, autoremove);
             util::sudo::check_perms();
             remove::remove(package_names, &mpr_url.url, *purge, *autoremove)
         },
         Commands::Search { query, mode, mpr_url, name_only } => {
-            println!("'search': query {:?}: on {:?}. filter mode: {:?}, name_only: {}", query, mpr_url.url, mode, name_only);
             search::search(query, &mpr_url.url, mode, *name_only)
         },
         Commands::Update { mpr_url } => {
-            println!("'update': on {:?}", mpr_url.url);
             util::sudo::check_perms();
             update::update(&mpr_url.url)
         },
         Commands::Upgrade { mpr_url, mode } => {
-            println!("'upgrade': on {:?}, mode: {:?}", mpr_url.url, mode);
-
             if *util::sudo::NORMAL_UID == 0 {
                 return message::error(&format!(
                     "This command cannot be ran as root, as it needs to call '{}', which is required to run under a non-root user.\n",
@@ -124,7 +113,6 @@ fn main() {
             upgrade::upgrade(&mpr_url.url, mode)
         },
         Commands::Whoami { mpr_url, mpr_token } => {
-            println!("'whoami': Token '{:?}' on {:?}", mpr_token.token, mpr_url.url);
             whoami::whoami(mpr_token.token.clone(), mpr_url.url.clone())
         },
     };
