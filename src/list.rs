@@ -1,8 +1,8 @@
 use crate::{
-    cache::{Cache, CachePackage, MprCache},
+    cache::{Cache, MprCache},
     style,
 };
-use rust_apt::cache::Cache as AptCache;
+use rust_apt::cache::{Cache as AptCache, PackageSort};
 
 pub fn list(args: &clap::ArgMatches) {
     let pkglist: Vec<&String> = match args.get_many("pkg") {
@@ -15,17 +15,28 @@ pub fn list(args: &clap::ArgMatches) {
     let name_only = args.is_present("name-only");
 
     let cache = Cache::new(AptCache::new(), MprCache::new());
-    let mut candidates: Vec<&Vec<CachePackage>> = Vec::new();
+    let mut candidates = Vec::new();
 
     if !pkglist.is_empty() {
         for pkg in pkglist {
-            if let Some(pkg_group) = cache.pkgmap().get(pkg) {
-                candidates.push(pkg_group);
+            if cache.apt_cache().get(pkg).is_some()
+                || cache.mpr_cache().packages().get(pkg).is_some()
+            {
+                candidates.push(pkg.to_string());
             }
         }
     } else {
-        for pkg_group in cache.pkgmap().values() {
-            candidates.push(pkg_group);
+        for pkg in Cache::get_nonvirtual_packages(cache.apt_cache(), &PackageSort::default()) {
+            let pkgname = pkg.name();
+            if !candidates.contains(&pkgname) {
+                candidates.push(pkgname);
+            }
+        }
+
+        for pkg in cache.mpr_cache().packages().values() {
+            if !candidates.contains(&pkg.pkgname) {
+                candidates.push(pkg.pkgname.to_string());
+            }
         }
     }
 

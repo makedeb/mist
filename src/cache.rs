@@ -232,37 +232,11 @@ impl MprCache {
 // Some of these fields only make sense to one type of package, but this kind of
 // cache allows us to combine both types when needed, such as when providing
 // search results.
-
-#[derive(Clone, PartialEq, Eq)]
-pub enum CachePackageSource {
-    Apt,
-    Mpr,
-}
-
-#[derive(Clone, PartialEq)]
-pub struct CachePackage {
-    pub pkgname: String,
-    pub pkgbase: Option<String>,
-    pub version: String,
-    pub pkgdesc: Option<String>,
-    pub arch: Option<String>,
-    pub maintainer: Option<String>,
-    pub num_votes: Option<u32>,
-    pub popularity: Option<f32>,
-    pub ood: Option<u32>,
-    pub source: CachePackageSource,
-}
-
 pub struct Cache {
     /// The underlying APT cache struct.
     apt_cache: AptCache,
     /// The underlying MPR cache struct.
     mpr_cache: MprCache,
-    /// A combined list of all packages in the cache.
-    //pkglist: Vec<CachePackage>,
-    /// A map for getting all packages with a certain pkgname. Can be quicker
-    /// than looping over [`Self::pkglist`].
-    pkgmap: HashMap<String, Vec<CachePackage>>,
 }
 
 impl Cache {
@@ -286,60 +260,9 @@ impl Cache {
 
     /// Create a new cache.
     pub fn new(apt_cache: AptCache, mpr_cache: MprCache) -> Self {
-        // Package list.
-        let mut pkglist = Vec::new();
-
-        for pkg in Self::get_nonvirtual_packages(&apt_cache, &PackageSort::default()) {
-            let candidate = pkg.candidate().unwrap();
-
-            pkglist.push(CachePackage {
-                pkgname: pkg.name(),
-                pkgbase: None,
-                version: candidate.version(),
-                pkgdesc: candidate.summary(),
-                arch: Some(pkg.arch()),
-                maintainer: None,
-                num_votes: None,
-                popularity: None,
-                ood: None,
-                source: CachePackageSource::Apt,
-            });
-        }
-
-        for pkg in mpr_cache.packages().values() {
-            pkglist.push(CachePackage {
-                pkgname: pkg.pkgname.clone(),
-                pkgbase: Some(pkg.pkgbase.clone()),
-                version: pkg.version.clone(),
-                pkgdesc: pkg.pkgdesc.clone(),
-                arch: None,
-                maintainer: pkg.maintainer.clone(),
-                num_votes: Some(pkg.num_votes),
-                popularity: Some(pkg.popularity),
-                ood: pkg.ood,
-                source: CachePackageSource::Mpr,
-            });
-        }
-
-        // Package map.
-        let mut pkgmap: HashMap<String, Vec<CachePackage>> = HashMap::new();
-
-        for pkg in &pkglist {
-            let pkgname = pkg.pkgname.clone();
-
-            #[allow(clippy::map_entry)]
-            if pkgmap.contains_key(&pkgname) {
-                pkgmap.get_mut(&pkgname).unwrap().push(pkg.clone());
-            } else {
-                pkgmap.insert(pkgname, vec![pkg.clone()]);
-            }
-        }
-
         Self {
             apt_cache,
             mpr_cache,
-            //pkglist,
-            pkgmap,
         }
     }
 
@@ -712,43 +635,6 @@ impl Cache {
                 quit::with_code(exitcode::UNAVAILABLE);
             }
         }
-    }
-
-    /// Get a reference to the generated pkglist (contains a combined APT+MPR
-    /// cache).
-    /*pub fn pkglist(&self) -> &Vec<CachePackage> {
-        &self.pkglist
-    }*/
-
-    /// Get a reference to the generated pkgmap (a key-value pair with keys of
-    /// pkgnames and values of lists of packages). Can be quicker than
-    /// [`Cache::pkglist`] if you're trying to lookup a package.
-    pub fn pkgmap(&self) -> &HashMap<String, Vec<CachePackage>> {
-        &self.pkgmap
-    }
-
-    // Get the APT variant of a package.
-    pub fn get_apt_pkg(&self, pkgname: &str) -> Option<&CachePackage> {
-        if let Some(pkglist) = self.pkgmap().get(&pkgname.to_owned()) {
-            for pkg in pkglist {
-                if let CachePackageSource::Apt = pkg.source {
-                    return Some(pkg);
-                }
-            }
-        }
-        None
-    }
-
-    // Get the MPR variant of a package.
-    pub fn get_mpr_pkg(&self, pkgname: &str) -> Option<&CachePackage> {
-        if let Some(pkglist) = self.pkgmap().get(&pkgname.to_owned()) {
-            for pkg in pkglist {
-                if let CachePackageSource::Mpr = pkg.source {
-                    return Some(pkg);
-                }
-            }
-        }
-        None
     }
 
     // Find the pkgbase of a given MPR package's pkgname.

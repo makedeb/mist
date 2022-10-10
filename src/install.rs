@@ -21,7 +21,8 @@ pub fn install(args: &clap::ArgMatches) {
     let mut unfindable = false;
 
     for pkg in &pkglist {
-        if cache.get_apt_pkg(pkg).is_none() && cache.get_mpr_pkg(pkg).is_none() {
+        if cache.apt_cache().get(pkg).is_none() && !cache.mpr_cache().packages().contains_key(*pkg)
+        {
             message::error(&format!(
                 "Unable to find package '{}'.\n",
                 pkg.green().bold()
@@ -35,8 +36,8 @@ pub fn install(args: &clap::ArgMatches) {
     }
 
     for pkg in &pkglist {
-        let apt_pkg = cache.get_apt_pkg(pkg);
-        let mpr_pkg = cache.get_mpr_pkg(pkg);
+        let apt_pkg = cache.apt_cache().get(pkg);
+        let mpr_pkg = cache.mpr_cache().packages().get(*pkg);
 
         if apt_pkg.is_some() && mpr_pkg.is_some() {
             let resp = util::ask_question(
