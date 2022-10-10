@@ -5,17 +5,7 @@ use crate::{
 };
 use rust_apt::cache::{Cache as AptCache, PackageSort};
 
-pub fn remove(args: &clap::ArgMatches) {
-    let pkglist: Vec<&String> = {
-        if let Some(pkglist) = args.get_many("pkg") {
-            pkglist.collect()
-        } else {
-            Vec::new()
-        }
-    };
-    let purge = args.is_present("purge");
-    let autoremove = args.is_present("autoremove");
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
+pub fn remove(pkglist: &Vec<String>, mpr_url: &str, purge: bool, autoremove: bool) {
     let cache = Cache::new(AptCache::new(), MprCache::new());
 
     // Lock the cache.

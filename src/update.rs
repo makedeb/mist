@@ -8,9 +8,7 @@ use std::{
     process::Command,
 };
 
-pub fn update(args: &clap::ArgMatches) {
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
-
+pub fn update(mpr_url: &String) {
     // For some reason we have to set our current UID to 0 instead of just the EUID
     // when using setuid functionality. TODO: No clue why, but this fixes the
     // issue for now.

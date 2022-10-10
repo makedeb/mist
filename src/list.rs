@@ -1,43 +1,60 @@
 use crate::{
-    cache::{Cache, CachePackage, MprCache},
+    args::SearchMode,
+    cache::{Cache, CachePackage, CachePackageSource, MprCache},
     style,
 };
+use itertools::Itertools;
 use rust_apt::cache::Cache as AptCache;
 
-pub fn list(args: &clap::ArgMatches) {
-    let pkglist: Vec<&String> = match args.get_many("pkg") {
-        Some(pkglist) => pkglist.collect(),
-        None => Vec::new(),
-    };
-    let apt_only = args.is_present("apt-only");
-    let mpr_only = args.is_present("mpr-only");
-    let installed_only = args.is_present("installed-only");
-    let name_only = args.is_present("name-only");
-
+pub fn list(
+    query_list: &Vec<String>,
+    _: &String,
+    mode: &SearchMode,
+    name_only: bool,
+    installed_only: bool,
+) -> String {
     let cache = Cache::new(AptCache::new(), MprCache::new());
-    let mut candidates: Vec<&Vec<CachePackage>> = Vec::new();
 
-    if !pkglist.is_empty() {
-        for pkg in pkglist {
-            if let Some(pkg_group) = cache.pkgmap().get(pkg) {
-                candidates.push(pkg_group);
-            }
-        }
+    let packages = if query_list.is_empty() {
+        cache.pkglist()
     } else {
-        for pkg_group in cache.pkgmap().values() {
-            candidates.push(pkg_group);
-        }
-    }
+        query_list
+            .iter()
+            .flat_map(|query| cache.search(query))
+            .collect()
+    };
 
-    print!(
-        "{}",
-        style::generate_pkginfo_entries(
-            &candidates,
-            &cache,
-            apt_only,
-            mpr_only,
-            installed_only,
-            name_only
-        )
-    );
+    let pkgs = if installed_only {
+        packages
+            .into_iter()
+            .filter(|pkg| pkg.is_installed)
+            .collect()
+    } else {
+        packages
+    };
+
+    let pkgs = match mode {
+        SearchMode::None => pkgs,
+        SearchMode::AptOnly => pkgs
+            .into_iter()
+            .filter(|pkg| pkg.source == CachePackageSource::Apt)
+            .collect(),
+        SearchMode::MprOnly => pkgs
+            .into_iter()
+            .filter(|pkg| pkg.source == CachePackageSource::Mpr)
+            .collect(),
+    };
+
+    let pkgs: Vec<&CachePackage> = pkgs
+        .into_iter()
+        .unique_by(|pkg| pkg.pkgname.clone())
+        .collect();
+
+    match name_only {
+        true => pkgs.iter().map(|pkg| &pkg.pkgname).join("\n"),
+        false => pkgs
+            .iter()
+            .map(|pkg| style::generate_pkginfo_entry(&pkg.pkgname, &cache))
+            .join("\n\n"),
+    }
 }
