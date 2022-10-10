@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2022-10-10
+### Changed
+- Return non-zero exit code when no packages are found for `search` and `list` commands.
+- Internal performance improvements.
+
 ## [0.10.0] - 2022-10-01
 ### Changed
 - Don't allow running `install` or `upgrade` commands as root.

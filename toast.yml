@@ -24,5 +24,4 @@ tasks:
     dependencies: ["run-tests"]
     input_paths:
       - tests/
-      - target/
     command: bats tests/
