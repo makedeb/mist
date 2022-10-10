@@ -3,9 +3,9 @@
 }
 
 @test "search with no results" {
-    target/debug/mist search 'nonexistent'
+    run ! target/debug/mist search 'nonexistent'
 }
 
 @test "list with no results" {
-    target/debug/mist list 'nonexistent'
+    run ! target/debug/mist list 'nonexistent'
 }
