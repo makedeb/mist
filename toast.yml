@@ -22,4 +22,7 @@ tasks:
       just build
   run-e2e-tests:
     dependencies: ["run-tests"]
+    input_paths:
+      - tests/
+      - target/
     command: bats tests/
