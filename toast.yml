@@ -18,7 +18,6 @@ tasks:
     command: |
       cargo fmt --check
       cargo clippy -- -D warnings
-      cargo test
       just build
   run-e2e-tests:
     dependencies: ["run-tests"]
