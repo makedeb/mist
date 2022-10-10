@@ -14,11 +14,12 @@ categories = ["command-line-utilities"]
 bat = { version = "0.21.0", default-features = false, features = ["paging", "regex-fancy"]}
 colored = { git = "https://github.com/mackwic/colored" }
 chrono = "0.4.19"
-clap = { version = "4", features = ["derive", "env", "cargo"] }
+clap = { version = "4", features = ["cargo", "derive", "env"] }
 dirs = "4.0.0"
 edit = "0.1.4"
 exitcode = "1.1.2"
 flate2 = "1.0.24"
+itertools = "0.10.5"
 lazy_static = "1.4.0"
 makedeb-srcinfo = "0.8.0"
 quit = "1.1.4"

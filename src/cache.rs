@@ -239,7 +239,7 @@ pub enum CachePackageSource {
     Mpr,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub struct CachePackage {
     pub pkgname: String,
     pub pkgbase: Option<String>,
@@ -251,6 +251,7 @@ pub struct CachePackage {
     pub popularity: Option<f32>,
     pub ood: Option<u32>,
     pub source: CachePackageSource,
+    pub is_installed: bool,
 }
 
 pub struct Cache {
@@ -259,7 +260,7 @@ pub struct Cache {
     /// The underlying MPR cache struct.
     mpr_cache: MprCache,
     /// A combined list of all packages in the cache.
-    //pkglist: Vec<CachePackage>,
+    pub pkglist: Vec<CachePackage>,
     /// A map for getting all packages with a certain pkgname. Can be quicker
     /// than looping over [`Self::pkglist`].
     pkgmap: HashMap<String, Vec<CachePackage>>,
@@ -303,6 +304,7 @@ impl Cache {
                 popularity: None,
                 ood: None,
                 source: CachePackageSource::Apt,
+                is_installed: pkg.is_installed(),
             });
         }
 
@@ -318,6 +320,11 @@ impl Cache {
                 popularity: Some(pkg.popularity),
                 ood: pkg.ood,
                 source: CachePackageSource::Mpr,
+                is_installed: if let Some(apkg) = apt_cache.get(&pkg.pkgname) {
+                    apkg.is_installed()
+                } else {
+                    false
+                },
             });
         }
 
@@ -338,7 +345,7 @@ impl Cache {
         Self {
             apt_cache,
             mpr_cache,
-            //pkglist,
+            pkglist,
             pkgmap,
         }
     }
@@ -727,6 +734,10 @@ impl Cache {
         &self.pkgmap
     }
 
+    pub fn pkglist(&self) -> Vec<&CachePackage> {
+        self.pkglist.iter().collect()
+    }
+
     // Get the APT variant of a package.
     pub fn get_apt_pkg(&self, pkgname: &str) -> Option<&CachePackage> {
         if let Some(pkglist) = self.pkgmap().get(&pkgname.to_owned()) {
@@ -749,6 +760,16 @@ impl Cache {
             }
         }
         None
+    }
+
+    pub fn search(&self, pkgname: &str) -> Vec<&CachePackage> {
+        self.pkglist
+            .iter()
+            .filter(|pkg| {
+                pkg.pkgname.contains(pkgname)
+                    || pkg.pkgdesc.as_deref().unwrap_or_default().contains(pkgname)
+            })
+            .collect()
     }
 
     // Find the pkgbase of a given MPR package's pkgname.

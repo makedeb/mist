@@ -4,11 +4,7 @@ use lazy_static::lazy_static;
 
 use chrono::{TimeZone, Utc};
 
-use crate::{
-    apt_util,
-    args::SearchMode,
-    cache::{Cache, CachePackage},
-};
+use crate::{apt_util, cache::Cache};
 use std::{cmp::Ordering, fmt::Write};
 
 lazy_static! {
@@ -18,17 +14,7 @@ lazy_static! {
 
 /// Generate a colored package information entry.
 /// If `name_only` is [`true`], the package name will be returned by itself.
-pub fn generate_pkginfo_entry(
-    pkg_group: &[CachePackage],
-    cache: &Cache,
-    name_only: bool,
-) -> String {
-    let pkgname = pkg_group.get(0).unwrap().pkgname.clone();
-
-    if name_only {
-        return pkgname;
-    }
-
+pub fn generate_pkginfo_entry(pkgname: &String, cache: &Cache) -> String {
     // Set up the string we'll return at the end of the function.
     let mut return_string = String::new();
 
@@ -36,8 +22,8 @@ pub fn generate_pkginfo_entry(
     write!(return_string, "{}", pkgname.custom_color(*UBUNTU_ORANGE)).unwrap();
 
     // Get the APT and MPR packages.
-    let apt_pkg = cache.get_apt_pkg(&pkgname);
-    let mpr_pkg = cache.get_mpr_pkg(&pkgname);
+    let apt_pkg = cache.get_apt_pkg(pkgname);
+    let mpr_pkg = cache.get_mpr_pkg(pkgname);
 
     // Get the package sources.
     let mut src_str = String::new();
@@ -150,53 +136,4 @@ pub fn generate_pkginfo_entry(
     }
 
     return_string
-}
-
-pub fn generate_pkginfo_entries(
-    pkgs: &Vec<&Vec<CachePackage>>,
-    cache: &Cache,
-    mode: &SearchMode,
-    name_only: bool,
-) -> String {
-    let mut matches = Vec::new();
-    let mut result_string = String::new();
-
-    for pkg_group in pkgs {
-        let pkgname = &pkg_group.get(0).unwrap().pkgname;
-
-        match mode {
-            SearchMode::None | SearchMode::AptOnly => {
-                if cache.get_apt_pkg(pkgname).is_some() {
-                    matches.push(pkg_group)
-                }
-            },
-            SearchMode::MprOnly => {
-                if cache.get_mpr_pkg(pkgname).is_some() {
-                    matches.push(pkg_group)
-                }
-            },
-            SearchMode::Installed => {
-                if let Some(pkg) = cache.apt_cache().get(pkgname) && !pkg.is_installed() {
-                    matches.push(pkg_group)
-                }
-            }
-        }
-    }
-
-    let matches_len = matches.len();
-
-    for (index, pkg_group) in matches.iter().enumerate() {
-        if name_only {
-            result_string.push_str(&pkg_group.get(0).unwrap().pkgname);
-            result_string.push('\n');
-        } else if index == matches_len - 1 {
-            result_string.push_str(&generate_pkginfo_entry(pkg_group, cache, name_only));
-            result_string.push('\n');
-        } else {
-            result_string.push_str(&generate_pkginfo_entry(pkg_group, cache, name_only));
-            result_string.push_str("\n\n");
-        }
-    }
-
-    result_string
 }

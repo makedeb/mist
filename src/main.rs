@@ -88,11 +88,10 @@ fn main() {
             package_names,
             mpr_url,
         } => {
-            if *util::sudo::NORMAL_UID == 0 {
-                return message::error(&format!(
-                    "This command cannot be ran as root, as it needs to call '{}', which is required to run under a non-root user.\n",
-                    "makedeb".bold().green()
-                ));
+            util::sudo::check_perms();
+
+            if is_running_as_sudo() {
+                return;
             }
 
             install::install(package_names, mpr_url.url.clone())
@@ -102,7 +101,17 @@ fn main() {
             mode,
             mpr_url,
             name_only,
-        } => list::list(package_names, &mpr_url.url, mode, name_only),
+            installed_only,
+        } => println!(
+            "{}",
+            list::list(
+                package_names,
+                &mpr_url.url,
+                mode,
+                *name_only,
+                *installed_only
+            )
+        ),
         Commands::ListComments {
             package_name,
             mpr_url,
@@ -122,17 +131,20 @@ fn main() {
             mode,
             mpr_url,
             name_only,
-        } => search::search(query, &mpr_url.url, mode, *name_only),
+            installed_only,
+        } => println!(
+            "{}",
+            search::search(query, &mpr_url.url, mode, *name_only, *installed_only)
+        ),
         Commands::Update { mpr_url } => {
             util::sudo::check_perms();
             update::update(&mpr_url.url)
         }
         Commands::Upgrade { mpr_url, mode } => {
-            if *util::sudo::NORMAL_UID == 0 {
-                return message::error(&format!(
-                    "This command cannot be ran as root, as it needs to call '{}', which is required to run under a non-root user.\n",
-                    "makedeb".bold().green()
-                ));
+            util::sudo::check_perms();
+
+            if is_running_as_sudo() {
+                return;
             }
 
             upgrade::upgrade(&mpr_url.url, mode)
@@ -141,4 +153,17 @@ fn main() {
             whoami::whoami(mpr_token.token.clone(), mpr_url.url.clone())
         }
     };
+}
+
+fn is_running_as_sudo() -> bool {
+    if *util::sudo::NORMAL_UID == 0 {
+        message::error(&format!(
+            "This command cannot be ran as root, as it needs to call '{}', which is required to run under a non-root user.\n",
+            "makedeb".bold().green()
+        ));
+
+        true
+    } else {
+        false
+    }
 }

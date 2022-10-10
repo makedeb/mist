@@ -53,11 +53,15 @@ pub enum Commands {
         #[arg(long = "name-only", default_value_t = false)]
         name_only: bool,
 
+        /// Only installed packages
+        #[arg(long = "installed-only", default_value_t = false)]
+        installed_only: bool,
+
         #[arg(long, value_enum, default_value_t=SearchMode::None)]
         mode: SearchMode,
 
         /// The package(s) to get information for
-        #[arg(required = true)]
+        #[arg(required = false)]
         package_names: Vec<String>,
     },
     /// List the comments on a package
@@ -101,6 +105,10 @@ pub enum Commands {
 
         #[arg(long, value_enum, default_value_t=SearchMode::None)]
         mode: SearchMode,
+
+        /// Only installed packages
+        #[arg(long = "installed-only", default_value_t = false)]
+        installed_only: bool,
 
         /// The package(s) to get information for
         #[arg(required = true)]
@@ -177,6 +185,4 @@ pub enum SearchMode {
     MprOnly,
     /// Only packages available via APT
     AptOnly,
-    /// Only installed packages
-    Installed,
 }
