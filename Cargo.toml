@@ -1,6 +1,6 @@
 [package]
 name = "mist"
-version = "0.10.1"
+version = "0.10.0"
 authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
 description = "The official command-line interface for the makedeb Package Repository"
 edition = "2021"
