@@ -1,8 +1,8 @@
 use crate::{
-    cache::{Cache, CachePackage, MprCache},
+    cache::{Cache, MprCache},
     style,
 };
-use rust_apt::cache::Cache as AptCache;
+use rust_apt::cache::{Cache as AptCache, PackageSort};
 
 pub fn search(args: &clap::ArgMatches) {
     let query_list: Vec<&String> = args.get_many("query").unwrap().collect();
@@ -12,34 +12,36 @@ pub fn search(args: &clap::ArgMatches) {
     let name_only = args.is_present("name-only");
 
     let cache = Cache::new(AptCache::new(), MprCache::new());
-    let mut candidates: Vec<&Vec<CachePackage>> = Vec::new();
+    let mut candidates = Vec::new();
 
     for query in query_list {
-        for (pkgname, pkg_group) in cache.pkgmap().iter() {
-            let mut pkgs = Vec::new();
-            let apt_pkg = cache.get_apt_pkg(pkgname);
-            let mpr_pkg = cache.get_mpr_pkg(pkgname);
-
-            if let Some(pkg) = apt_pkg {
-                pkgs.push(pkg);
-            }
-            if let Some(pkg) = mpr_pkg {
-                pkgs.push(pkg);
-            }
-
-            for pkg in pkgs {
-                if (pkg.pkgname.contains(query)
-                    || pkg
-                        .pkgdesc
-                        .as_ref()
-                        .unwrap_or(&"".to_owned())
-                        .contains(query))
-                    && !candidates.contains(&pkg_group)
-                {
-                    candidates.push(pkg_group);
-                }
+        for pkg in Cache::get_nonvirtual_packages(cache.apt_cache(), &PackageSort::default()) {
+            let pkgname = pkg.name();
+            if (pkgname.contains(query)
+                || pkg
+                    .candidate()
+                    .unwrap()
+                    .description()
+                    .unwrap_or_default()
+                    .contains(query))
+                && !candidates.contains(&pkgname)
+            {
+                candidates.push(pkgname);
             }
         }
+
+        for pkg in cache.mpr_cache().packages().values() {
+            if (pkg.pkgname.contains(query)
+                || pkg.pkgdesc.clone().unwrap_or_default().contains(query))
+                && !candidates.contains(&pkg.pkgname)
+            {
+                candidates.push(pkg.pkgname.to_string());
+            }
+        }
+    }
+
+    if candidates.is_empty() {
+        quit::with_code(exitcode::UNAVAILABLE);
     }
 
     print!(

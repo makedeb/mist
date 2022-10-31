@@ -1,0 +1,26 @@
+image: proget.makedeb.org/docker/makedeb/makedeb:ubuntu-jammy
+tasks:
+  install-deps:
+    command: |
+      curl -q 'https://proget.makedeb.org/debian-feeds/prebuilt-mpr.pub' | gpg --dearmor | sudo tee /usr/share/keyrings/prebuilt-mpr-archive-keyring.gpg 1> /dev/null
+      echo "deb [signed-by=/usr/share/keyrings/prebuilt-mpr-archive-keyring.gpg] https://proget.makedeb.org prebuilt-mpr $(lsb_release -cs)" | sudo tee /etc/apt/sources.list.d/prebuilt-mpr.list
+      sudo apt-get update
+      sudo apt-get install bats g++ just libssl-dev libapt-pkg-dev lsb-release pkg-config rustup sudo -y
+  run-tests:
+    dependencies: ["install-deps"]
+    input_paths:
+      - Cargo.toml
+      - Cargo.lock
+      - src/
+      - rust-toolchain.toml
+      - rustfmt.toml
+      - justfile
+    command: |
+      cargo fmt --check
+      cargo clippy -- -D warnings
+      just build
+  run-e2e-tests:
+    dependencies: ["run-tests"]
+    input_paths:
+      - tests/
+    command: bats tests/

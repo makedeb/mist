@@ -2,11 +2,8 @@ name: Run unit tests
 on: {"pull_request"}
 env: {"DEBIAN_FRONTEND": "noninteractive"}
 jobs:
-  build:
+  run-tests:
     runs-on: ubuntu-latest
-    container:
-      image: proget.hunterwittenborn.com/docker/makedeb/makedeb-alpha:ubuntu-focal
-      options: --user root
     steps:
       - name: Install CI prerequisites
         run: sudo -E apt-get install git -y
@@ -15,11 +12,6 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run unit tests
-        run: |
-          sudo chown 'makedeb:makedeb' ./ -R
-          .drone/scripts/setup-pbmpr.sh
-          sudo apt-get install rustup libssl-dev pkg-config libapt-pkg-dev -y
-          cargo fmt --check
-          cargo clippy -- -D warnings
+        uses: stepchowfun/toast/.github/actions/toast@main
 
 # vim: expandtab ts=2 sw=2

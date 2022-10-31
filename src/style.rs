@@ -4,11 +4,8 @@ use lazy_static::lazy_static;
 
 use chrono::{TimeZone, Utc};
 
-use crate::{
-    apt_util,
-    cache::{Cache, CachePackage},
-};
-use std::{cmp::Ordering, fmt::Write};
+use crate::cache::Cache;
+use std::fmt::Write;
 
 lazy_static! {
     pub static ref UBUNTU_ORANGE: CustomColor = CustomColor::new(255, 175, 0);
@@ -17,15 +14,9 @@ lazy_static! {
 
 /// Generate a colored package information entry.
 /// If `name_only` is [`true`], the package name will be returned by itself.
-pub fn generate_pkginfo_entry(
-    pkg_group: &[CachePackage],
-    cache: &Cache,
-    name_only: bool,
-) -> String {
-    let pkgname = pkg_group.get(0).unwrap().pkgname.clone();
-
+pub fn generate_pkginfo_entry(pkgname: &str, cache: &Cache, name_only: bool) -> String {
     if name_only {
-        return pkgname;
+        return pkgname.to_string();
     }
 
     // Set up the string we'll return at the end of the function.
@@ -35,26 +26,31 @@ pub fn generate_pkginfo_entry(
     write!(return_string, "{}", pkgname.custom_color(*UBUNTU_ORANGE)).unwrap();
 
     // Get the APT and MPR packages.
-    let apt_pkg = cache.get_apt_pkg(&pkgname);
-    let mpr_pkg = cache.get_mpr_pkg(&pkgname);
+    let apt_pkg = cache.apt_cache().get(pkgname);
+    let mpr_pkg = cache.mpr_cache().packages().get(pkgname);
 
     // Get the package sources.
     let mut src_str = String::new();
+    {
+        let mut sources = vec![];
 
-    if apt_pkg.is_some() && mpr_pkg.is_some() {
-        write!(
-            src_str,
-            "[{}, {}]",
-            "APT".custom_color(*UBUNTU_PURPLE),
-            "MPR".custom_color(*UBUNTU_PURPLE)
-        )
-        .unwrap();
-    } else if apt_pkg.is_some() {
-        write!(src_str, "[{}]", "APT".custom_color(*UBUNTU_PURPLE)).unwrap();
-    } else if mpr_pkg.is_some() {
-        write!(src_str, "[{}]", "MPR".custom_color(*UBUNTU_PURPLE)).unwrap();
-    } else {
-        unreachable!();
+        if apt_pkg.is_some() {
+            sources.push("APT".custom_color(*UBUNTU_PURPLE));
+        }
+        if mpr_pkg.is_some() {
+            sources.push("MPR".custom_color(*UBUNTU_PURPLE));
+        }
+
+        let mut sources_str = String::new();
+
+        for src in sources {
+            sources_str.push_str(&format!("{}, ", src));
+        }
+
+        sources_str.pop().unwrap();
+        sources_str.pop().unwrap();
+
+        write!(src_str, "[{}]", sources_str).unwrap();
     }
 
     // Figure out what version and description to use, in this order:
@@ -64,54 +60,36 @@ pub fn generate_pkginfo_entry(
     let pkgver: String;
     let pkgdesc: Option<String>;
 
-    if let Some(apt_pkg_unwrapped) = apt_pkg && let Some(mpr_pkg_unwrapped) = mpr_pkg {
-        if cache.apt_cache().get(&apt_pkg_unwrapped.pkgname).unwrap().is_installed() {
-            pkgver = apt_pkg.unwrap().version.clone();
-            pkgdesc = apt_pkg.unwrap().pkgdesc.clone();
-        } else {
-            let apt_pkgver = &apt_pkg_unwrapped.version;
-            let mpr_pkgver = &mpr_pkg_unwrapped.version;
-
-            match apt_util::cmp_versions(apt_pkgver, mpr_pkgver) {
-                Ordering::Greater | Ordering::Equal => {
-                    pkgver = apt_pkgver.clone();
-                    pkgdesc = apt_pkg_unwrapped.pkgdesc.clone();
-                }
-                Ordering::Less => {
-                    pkgver = mpr_pkgver.clone();
-                    pkgdesc = mpr_pkg_unwrapped.pkgdesc.clone();
-                }
-            }
-        }
+    if let Some(apt_pkg_unwrapped) = &apt_pkg && apt_pkg_unwrapped.is_installed() {
+        let version = apt_pkg_unwrapped.candidate().unwrap();
+        pkgver = version.version();
+        pkgdesc = version.description();
     } else if let Some(mpr_pkg_unwrapped) = mpr_pkg {
-        pkgver = mpr_pkg_unwrapped.version.clone();
+        pkgver = mpr_pkg_unwrapped.version.to_string();
         pkgdesc = mpr_pkg_unwrapped.pkgdesc.clone();
+    } else if let Some(apt_pkg_unwrapped) = &apt_pkg {
+        let version = apt_pkg_unwrapped.candidate().unwrap();
+        pkgver = version.version();
+        pkgdesc = version.description();
     } else {
-        let apt_pkg_unwrapped = apt_pkg.unwrap();
-        pkgver = apt_pkg_unwrapped.version.clone();
-        pkgdesc = apt_pkg_unwrapped.pkgdesc.clone();
+        unreachable!();
     }
 
     // Add the first line and description, at long last. This string is the one
     // we'll return at the end of the function.
     write!(return_string, "/{} {}", pkgver, src_str).unwrap();
-
-    if let Some(unwrapped_pkgdesc) = pkgdesc {
-        write!(
-            return_string,
-            "\n{} {}",
-            "Description:".bold(),
-            unwrapped_pkgdesc
-        )
-        .unwrap();
-    } else {
-        write!(return_string, "\n{} N/A", "Description:".bold()).unwrap();
-    }
+    write!(
+        return_string,
+        "\n{} {}",
+        "Description:".bold(),
+        pkgdesc.unwrap_or_else(|| "N/A".to_string())
+    )
+    .unwrap();
 
     // If the MPR package exists, add some extra information about that.
-    if let Some(pkg) = mpr_pkg {
+    if let Some(mpr_pkg_unwrapped) = mpr_pkg {
         // Maintainer.
-        if let Some(maintainer) = &pkg.maintainer {
+        if let Some(maintainer) = &mpr_pkg_unwrapped.maintainer {
             write!(return_string, "\n{} {}", "Maintainer:".bold(), maintainer).unwrap();
         }
 
@@ -120,7 +98,7 @@ pub fn generate_pkginfo_entry(
             return_string,
             "\n{} {}",
             "Votes:".bold(),
-            &pkg.num_votes.unwrap()
+            &mpr_pkg_unwrapped.num_votes
         )
         .unwrap();
 
@@ -129,14 +107,14 @@ pub fn generate_pkginfo_entry(
             return_string,
             "\n{} {}",
             "Popularity:".bold(),
-            &pkg.popularity.unwrap()
+            &mpr_pkg_unwrapped.popularity
         )
         .unwrap();
 
         // Out of Date.
         let ood_date: String;
 
-        if let Some(ood_epoch) = pkg.ood {
+        if let Some(ood_epoch) = mpr_pkg_unwrapped.ood {
             ood_date = Utc
                 .timestamp(ood_epoch as i64, 0)
                 .format("%Y-%m-%d")
@@ -151,8 +129,8 @@ pub fn generate_pkginfo_entry(
     return_string
 }
 
-pub fn generate_pkginfo_entries(
-    pkgs: &Vec<&Vec<CachePackage>>,
+pub fn generate_pkginfo_entries<T: AsRef<str>>(
+    pkgs: &[T],
     cache: &Cache,
     apt_only: bool,
     mpr_only: bool,
@@ -162,16 +140,16 @@ pub fn generate_pkginfo_entries(
     let mut matches = Vec::new();
     let mut result_string = String::new();
 
-    for pkg_group in pkgs {
-        let pkgname = &pkg_group.get(0).unwrap().pkgname;
+    for pkg in pkgs {
+        let pkgname = pkg.as_ref();
 
         // APT only.
-        if apt_only && cache.get_apt_pkg(pkgname).is_none() {
+        if apt_only && cache.apt_cache().get(pkgname).is_none() {
             continue;
         }
 
         // MPR only.
-        if mpr_only && cache.get_mpr_pkg(pkgname).is_none() {
+        if mpr_only && cache.mpr_cache().packages().get(pkgname).is_none() {
             continue;
         }
 
@@ -186,20 +164,20 @@ pub fn generate_pkginfo_entries(
         }
 
         // Package be passed all the tests bro. We's be adding it to the vector now.
-        matches.push(pkg_group);
+        matches.push(pkgname);
     }
 
     let matches_len = matches.len();
 
-    for (index, pkg_group) in matches.iter().enumerate() {
+    for (index, pkgname) in matches.iter().enumerate() {
         if name_only {
-            result_string.push_str(&pkg_group.get(0).unwrap().pkgname);
+            result_string.push_str(pkgname);
             result_string.push('\n');
         } else if index == matches_len - 1 {
-            result_string.push_str(&generate_pkginfo_entry(pkg_group, cache, name_only));
+            result_string.push_str(&generate_pkginfo_entry(pkgname, cache, name_only));
             result_string.push('\n');
         } else {
-            result_string.push_str(&generate_pkginfo_entry(pkg_group, cache, name_only));
+            result_string.push_str(&generate_pkginfo_entry(pkgname, cache, name_only));
             result_string.push_str("\n\n");
         }
     }

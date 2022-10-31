@@ -2,17 +2,18 @@ local deploy() = {
     name: "deploy",
     kind: "pipeline",
     type: "docker",
+    volumes: [{name: "docker", host: {path: "/var/run/docker.sock"}}],
     trigger: {branch: ["main"]},
     steps: [
         {
             name: "run-tests",
             image: "proget.makedeb.org/docker/makedeb/makedeb:ubuntu-jammy",
+            volumes: [{name: "docker", path: "/var/run/docker.sock"}],
             commands: [
                 "sudo chown 'makedeb:makedeb' ./ -R",
                 ".drone/scripts/setup-pbmpr.sh",
-                "sudo apt-get install rustup libssl-dev pkg-config libapt-pkg-dev -y",
-                "cargo fmt --check",
-                "cargo clippy -- -D warnings"
+                "sudo apt-get install toast -y",
+                "sudo toast"
             ]
         },
 
