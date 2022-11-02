@@ -1,3 +1,4 @@
+use crate::cli::{Cli, CliComment};
 use crate::{cache::MprCache, message, util};
 use serde::Deserialize;
 use serde_json::json;
@@ -9,10 +10,10 @@ struct CommentResult {
     link: String,
 }
 
-pub fn comment(args: &clap::ArgMatches) {
-    let pkg: &String = args.get_one("pkg").unwrap();
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
-    let api_token: &String = match args.get_one("token") {
+pub fn comment(args: &Cli, cmd_args: &CliComment) {
+    let pkg = &cmd_args.pkg;
+    let mpr_url = &args.mpr_url;
+    let api_token = match &args.token {
         Some(token) => token,
         None => {
             message::error("No API token was provided.\n");
@@ -36,8 +37,8 @@ pub fn comment(args: &clap::ArgMatches) {
 
     // Get the message.
     // If no message was supplied, get one from the user.
-    let msg: String = match args.get_one::<String>("msg") {
-        Some(msg) => (msg).to_owned(),
+    let msg: String = match &cmd_args.msg {
+        Some(msg) => msg.to_owned(),
         None => {
             // Get the editor.
             let editor = match edit::get_editor() {

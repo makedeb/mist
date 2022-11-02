@@ -1,5 +1,6 @@
 use crate::{
     cache::{Cache, MprCache},
+    cli::{Cli, CliUpgrade},
     install_util, util,
 };
 use rust_apt::{
@@ -8,10 +9,10 @@ use rust_apt::{
 };
 use std::{collections::HashMap, fs};
 
-pub fn upgrade(args: &clap::ArgMatches) {
-    let apt_only = args.is_present("apt-only");
-    let mpr_only = args.is_present("mpr-only");
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
+pub fn upgrade(args: &Cli, _cmd_args: &CliUpgrade) {
+    let apt_only = args.apt_only;
+    let mpr_only = args.mpr_only;
+    let mpr_url = &args.mpr_url;
 
     let cache = Cache::new(AptCache::new(), MprCache::new());
 

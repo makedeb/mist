@@ -1,4 +1,11 @@
-use crate::{cache::MprCache, message, progress::MistAcquireProgress, style::Colorize, util};
+use crate::{
+    cache::MprCache,
+    cli::{Cli, CliUpdate},
+    message,
+    progress::MistAcquireProgress,
+    style::Colorize,
+    util,
+};
 use makedeb_srcinfo::SplitDependency;
 use rust_apt::{cache::Cache as AptCache, progress::AcquireProgress, tagfile::TagSection};
 use std::{
@@ -8,8 +15,8 @@ use std::{
     process::Command,
 };
 
-pub fn update(args: &clap::ArgMatches) {
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
+pub fn update(args: &Cli, _cmd_args: &CliUpdate) {
+    let mpr_url = &args.mpr_url;
 
     // For some reason we have to set our current UID to 0 instead of just the EUID
     // when using setuid functionality. TODO: No clue why, but this fixes the

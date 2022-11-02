@@ -14,7 +14,7 @@ categories = ["command-line-utilities"]
 bat = { version = "0.21.0", default-features = false, features = ["paging", "regex-fancy"]}
 colored = { git = "https://github.com/mackwic/colored" }
 chrono = "0.4.19"
-clap = { version = "3.2.16", features = ["cargo", "env"] }
+clap = { version = "4.0.18", features = ["cargo", "env", "derive"] }
 dirs = "4.0.0"
 edit = "0.1.4"
 exitcode = "1.1.2"

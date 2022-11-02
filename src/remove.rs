@@ -1,21 +1,16 @@
 use crate::{
     apt_util,
     cache::{Cache, MprCache},
+    cli::{Cli, CliRemove},
     message, util,
 };
 use rust_apt::cache::{Cache as AptCache, PackageSort};
 
-pub fn remove(args: &clap::ArgMatches) {
-    let pkglist: Vec<&String> = {
-        if let Some(pkglist) = args.get_many("pkg") {
-            pkglist.collect()
-        } else {
-            Vec::new()
-        }
-    };
-    let purge = args.is_present("purge");
-    let autoremove = args.is_present("autoremove");
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
+pub fn remove(args: &Cli, cmd_args: &CliRemove) {
+    let pkglist = &cmd_args.pkg;
+    let purge = cmd_args.purge;
+    let autoremove = cmd_args.autoremove;
+    let mpr_url = &args.mpr_url;
     let cache = Cache::new(AptCache::new(), MprCache::new());
 
     // Lock the cache.

@@ -1,14 +1,15 @@
 use crate::{
     cache::{Cache, MprCache},
+    cli::{Cli, CliInstall},
     install_util, message,
     style::Colorize,
     util,
 };
 use rust_apt::cache::Cache as AptCache;
 
-pub fn install(args: &clap::ArgMatches) {
-    let pkglist: Vec<&String> = args.get_many("pkg").unwrap().collect();
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
+pub fn install(args: &Cli, cmd_args: &CliInstall) {
+    let pkglist = &cmd_args.pkg;
+    let mpr_url = &args.mpr_url;
     let cache = Cache::new(AptCache::new(), MprCache::new());
 
     // Package sources.
@@ -20,9 +21,8 @@ pub fn install(args: &clap::ArgMatches) {
     // should just show those packages and abort.
     let mut unfindable = false;
 
-    for pkg in &pkglist {
-        if cache.apt_cache().get(pkg).is_none() && !cache.mpr_cache().packages().contains_key(*pkg)
-        {
+    for pkg in pkglist {
+        if cache.apt_cache().get(pkg).is_none() && !cache.mpr_cache().packages().contains_key(pkg) {
             message::error(&format!(
                 "Unable to find package '{}'.\n",
                 pkg.green().bold()
@@ -35,9 +35,9 @@ pub fn install(args: &clap::ArgMatches) {
         quit::with_code(exitcode::USAGE);
     }
 
-    for pkg in &pkglist {
+    for pkg in pkglist {
         let apt_pkg = cache.apt_cache().get(pkg);
-        let mpr_pkg = cache.mpr_cache().packages().get(*pkg);
+        let mpr_pkg = cache.mpr_cache().packages().get(pkg);
 
         if apt_pkg.is_some() && mpr_pkg.is_some() {
             let resp = util::ask_question(

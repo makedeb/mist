@@ -1,12 +1,13 @@
 use crate::{
     cache::{Cache, MprCache},
+    cli::{Cli, CliClone},
     message, util,
 };
 use rust_apt::cache::Cache as AptCache;
 
-pub fn clone(args: &clap::ArgMatches) {
-    let pkg: &String = args.get_one("pkg").unwrap();
-    let mpr_url: &String = args.get_one("mpr-url").unwrap();
+pub fn clone(args: &Cli, cmd_args: &CliClone) {
+    let pkg = &cmd_args.pkg;
+    let mpr_url = &args.mpr_url;
     let cache = Cache::new(AptCache::new(), MprCache::new());
     let mut pkgbases: Vec<&String> = Vec::new();
 
