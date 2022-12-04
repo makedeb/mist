@@ -50,7 +50,7 @@ To install Mist from a prebuilt binary, install the `mist-bin` package:
 
 ```sh
 git clone 'https://mpr.makedeb.org/mist-bin'
-cd mist/
+cd mist-bin/
 makedeb -si
 ```
 
