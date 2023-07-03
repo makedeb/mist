@@ -1,6 +1,6 @@
 [package]
 name = "mist"
-version = "0.10.0"
+version = "0.11.0"
 authors = ["Hunter Wittenborn <hunter@hunterwittenborn.com"]
 description = "The official command-line interface for the makedeb Package Repository"
 edition = "2021"
@@ -23,7 +23,7 @@ lazy_static = "1.4.0"
 makedeb-srcinfo = "0.8.0"
 quit = "1.1.4"
 regex = "1.6.0"
-reqwest = { version = "0.11.11", features = ["blocking", "json"] }
+reqwest = { version = "0.11.11", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 rust-apt = { git = "https://gitlab.com/volian/rust-apt" }
 serde = { version = "1.0.142", features = ["derive"] }
 serde_json = "1.0.83"
