@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2023-07-12
+### Fixed
+- Remove Gzip processor from MPR package downloader.
+
 ## [0.11.0] - 2023-07-03
 ### Changed
 - Return non-zero exit code when no packages are found for `search` and `list` commands.

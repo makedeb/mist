@@ -4,7 +4,6 @@ use crate::{
     style::Colorize,
     util,
 };
-use flate2::read::GzDecoder;
 use rust_apt::{
     cache::{Cache as AptCache, PackageSort},
     package::Package,
@@ -174,15 +173,12 @@ impl MprCache {
     }
 
     pub fn validate_data(data: &[u8]) -> Result<Self, ()> {
-        let mut file_gz = GzDecoder::new(data);
-        let mut file_json = String::new();
-
-        match file_gz.read_to_string(&mut file_json) {
-            Ok(_) => (),
+        let packages = match String::from_utf8(data.to_vec()) {
+            Ok(string) => string,
             Err(_) => return Err(()),
-        }
+        };
 
-        let cache = match serde_json::from_str::<Vec<MprPackage>>(&file_json) {
+        let cache = match serde_json::from_str::<Vec<MprPackage>>(&packages) {
             Ok(json) => json,
             Err(_) => return Err(()),
         };

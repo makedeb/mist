@@ -4,7 +4,7 @@
 # `-H 'MPR-Package: yes'` to your `makedeb` call if you want Mist to be able to
 # automatically update itself.
 pkgname=mist
-pkgver=0.11.0
+pkgver=0.12.0
 pkgrel=1
 pkgdesc='The official command-line interface for the makedeb Package Repository'
 arch=('any')
