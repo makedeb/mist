@@ -159,7 +159,7 @@ pub fn generate_pkginfo_entries<T: AsRef<str>>(
             && !pkg.is_installed()
         {
             continue;
-        } else if cache.apt_cache().get(pkgname).is_none() {
+        } else if cache.apt_cache().get(pkgname).is_none() && !cache.mpr_cache().packages().contains_key(pkgname) {
             continue;
         }
 
